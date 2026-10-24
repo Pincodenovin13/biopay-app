@@ -1,0 +1,269 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  ADMIN
+  SUPPORT
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum Currency {
+  TOMAN
+  IRR
+  USD
+  AED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  CANCELLED
+}
+
+enum PaymentGatewayType {
+  ZARINPAL
+  IDPAY
+  TRONGRID_USDT
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  PROCESSING
+  COMPLETED
+  REJECTED
+}
+
+enum ReferralStatus {
+  ACTIVE
+  COMPLETED
+}
+
+model User {
+  id                   String       @id @default(cuid())
+  phone                String?      @unique
+  email                String?      @unique
+  name                 String?
+  role                 Role         @default(USER)
+  status               UserStatus   @default(ACTIVE)
+  telegramChatId       String?      @unique
+  referralCode         String       @unique
+  referredById         String?
+  referredBy           User?        @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referralsMade        User[]       @relation("UserReferrals")
+  instagramProofUrl    String?
+  isReferrerVerified   Boolean      @default(false)
+  referrerRenewalDueAt DateTime?
+  stores               Store[]
+  withdrawals          Withdrawal[]
+  referralEarnings     Referral[]   @relation("ReferralRewards")
+  auditLogs            AuditLog[]
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  @@index([phone])
+  @@index([email])
+  @@index([referralCode])
+}
+
+model Store {
+  id              String     @id @default(cuid())
+  userId          String
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug            String     @unique
+  title           String
+  bio             String?    @db.Text
+  logoUrl         String?
+  bannerUrl       String?
+  instagramHandle String?
+  telegramHandle  String?
+  whatsappNumber  String?
+  industry        String?
+  currency        Currency   @default(TOMAN)
+  isActive        Boolean    @default(true)
+  categories      Category[]
+  products        Product[]
+  orders          Order[]
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([slug])
+  @@index([userId])
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  storeId   String
+  store     Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name      String
+  order     Int       @default(0)
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([storeId])
+}
+
+model Product {
+  id             String    @id @default(cuid())
+  storeId        String
+  store          Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  categoryId     String?
+  category       Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  title          String
+  description    String?   @db.Text
+  price          BigInt
+  compareAtPrice BigInt?
+  inventory      Int       @default(0)
+  imageUrls      String[]  @default([])
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([storeId])
+  @@index([categoryId])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  storeId         String
+  store           Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customerName    String
+  customerPhone   String
+  customerAddress String?     @db.Text
+  totalAmount     BigInt
+  status          OrderStatus @default(PENDING)
+  paymentId       String?     @unique
+  payment         Payment?    @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([storeId])
+  @@index([customerPhone])
+}
+
+model Payment {
+  id           String             @id @default(cuid())
+  gateway      PaymentGatewayType @default(ZARINPAL)
+  amount       BigInt
+  trackingCode String?            @unique
+  refId        String?            @unique
+  status       PaymentStatus      @default(PENDING)
+  order        Order?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([trackingCode])
+  @@index([refId])
+  @@index([status])
+}
+
+model Withdrawal {
+  id                  String           @id @default(cuid())
+  userId              String
+  user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount              BigInt
+  method              String           @default("SHABA") // SHABA or USDT_TRC20
+  shebaNumber         String?
+  destinationAddress  String?
+  networkFee          BigInt           @default(0)
+  bankName            String?
+  status              WithdrawalStatus @default(PENDING)
+  payoutScreenshotUrl String?
+  telegramNotifiedAt  DateTime?
+  adminNotes          String?          @db.Text
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Referral {
+  id               String         @id @default(cuid())
+  referrerId       String
+  referrer         User           @relation("ReferralRewards", fields: [referrerId], references: [id], onDelete: Cascade)
+  refereeId        String         @unique
+  commissionEarned BigInt         @default(0)
+  currency         Currency       @default(TOMAN)
+  status           ReferralStatus @default(ACTIVE)
+  createdAt        DateTime       @default(now())
+
+  @@index([referrerId])
+}
+
+model Plan {
+  id                    String       @id @default(cuid())
+  name                  String
+  slug                  String       @unique
+  priceMonthly          BigInt
+  priceAnnual           BigInt
+  maxProducts           Int          @default(50)
+  maxStores             Int          @default(1)
+  transactionFeePercent Float        @default(1.5)
+  features              String[]     @default([])
+  isActive              Boolean      @default(true)
+  bundles               PlanBundle[]
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  @@index([slug])
+}
+
+model PlanBundle {
+  id              String   @id @default(cuid())
+  planId          String
+  plan            Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  durationMonths  Int
+  discountPercent Float    @default(0.0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  @@index([planId])
+}
+
+model OtpCode {
+  id         String   @id @default(cuid())
+  identifier String
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([identifier])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  ipAddress String?
+  userAgent String?
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}

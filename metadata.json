@@ -1,0 +1,6 @@
+{
+  "name": "BioPay - Link-in-Bio & Storefront Platform",
+  "description": "Enterprise-grade SaaS Link-in-Bio and digital storefront platform engineered for social commerce sellers across Iran and the Middle East.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

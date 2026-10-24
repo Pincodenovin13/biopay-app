@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # PostgreSQL 16 Database Service
+  # ============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: biopay_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-biopay_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-SecurePasswordVPS2026!}
+      POSTGRES_DB: ${POSTGRES_DB:-biopay_db}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - biopay_pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-biopay_user} -d ${POSTGRES_DB:-biopay_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - biopay_network
+
+  # ============================================================================
+  # BioPay Next.js 14 App Service
+  # ============================================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: biopay_app
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-biopay_user}:${POSTGRES_PASSWORD:-SecurePasswordVPS2026!}@postgres:5432/${POSTGRES_DB:-biopay_db}?schema=public
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-https://biopay.me}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      CSRF_SECRET: ${CSRF_SECRET}
+      KAVENEGAR_API_KEY: ${KAVENEGAR_API_KEY}
+      KAVENEGAR_SENDER: ${KAVENEGAR_SENDER}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHANNEL_ID: ${TELEGRAM_CHANNEL_ID}
+      ZARINPAL_MERCHANT_ID: ${ZARINPAL_MERCHANT_ID}
+      ZARINPAL_SANDBOX: ${ZARINPAL_SANDBOX:-true}
+      PAYMENT_CALLBACK_URL: ${PAYMENT_CALLBACK_URL}
+      UPLOAD_DIR: "/app/public/uploads"
+    volumes:
+      - biopay_uploads:/app/public/uploads
+    networks:
+      - biopay_network
+
+volumes:
+  biopay_pgdata:
+    name: biopay_pgdata
+  biopay_uploads:
+    name: biopay_uploads
+
+networks:
+  biopay_network:
+    name: biopay_network
+    driver: bridge

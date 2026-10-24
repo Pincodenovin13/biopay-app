@@ -151,6 +151,7 @@ model Order {
   customerPhone   String
   customerAddress String?     @db.Text
   totalAmount     BigInt
+  items           Json?
   status          OrderStatus @default(PENDING)
   paymentId       String?     @unique
   payment         Payment?    @relation(fields: [paymentId], references: [id], onDelete: SetNull)
@@ -163,17 +164,24 @@ model Order {
 
 model Payment {
   id           String             @id @default(cuid())
+  userId       String?
+  planId       String?
+  currency     Currency           @default(TOMAN)
   gateway      PaymentGatewayType @default(ZARINPAL)
   amount       BigInt
   trackingCode String?            @unique
   refId        String?            @unique
+  txHash       String?            @unique
   status       PaymentStatus      @default(PENDING)
   order        Order?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 
+  @@index([userId])
+  @@index([planId])
   @@index([trackingCode])
   @@index([refId])
+  @@index([txHash])
   @@index([status])
 }
 
@@ -182,6 +190,7 @@ model Withdrawal {
   userId              String
   user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   amount              BigInt
+  currency            Currency         @default(TOMAN)
   method              String           @default("SHABA") // SHABA or USDT_TRC20
   shebaNumber         String?
   destinationAddress  String?
@@ -205,6 +214,7 @@ model Referral {
   refereeId        String         @unique
   commissionEarned BigInt         @default(0)
   currency         Currency       @default(TOMAN)
+  renewalDueAt     DateTime?
   status           ReferralStatus @default(ACTIVE)
   createdAt        DateTime       @default(now())
 
@@ -217,6 +227,8 @@ model Plan {
   slug                  String       @unique
   priceMonthly          BigInt
   priceAnnual           BigInt
+  priceUSDTMonthly      Float?
+  priceUSDTAnnual       Float?
   maxProducts           Int          @default(50)
   maxStores             Int          @default(1)
   transactionFeePercent Float        @default(1.5)
@@ -225,6 +237,18 @@ model Plan {
   bundles               PlanBundle[]
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt
+
+  @@index([slug])
+}
+
+model Industry {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  icon      String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([slug])
 }

@@ -1,6 +1,7 @@
 /**
  * BioPay Payment Service
- * Handles payment creation, verification, subscription activation, and referral commission calculations.
+ * Handles payment creation, verification, subscription activation, and dynamic referral commission calculations.
+ * Strictly configured with 3 plans: Starter (1mo), Pro (2mo), Business (3mo).
  */
 
 import { PaymentGatewayFactory } from './paymentFactory';
@@ -12,15 +13,89 @@ import {
   PaymentVerifyResult,
 } from '../modules/payments/payment.types';
 
+export type BioPayPlanSlug = 'starter' | 'pro' | 'business';
+
+export interface PlanConfig {
+  slug: BioPayPlanSlug;
+  name: string;
+  durationMonths: number;
+  priceToman: number;
+  oldPriceToman: number;
+  priceUSDT: number;
+  oldPriceUSDT: number;
+  referralCommissionPercent: number;
+  features: string[];
+}
+
+export const BIOPAY_PLANS: Record<BioPayPlanSlug, PlanConfig> = {
+  starter: {
+    slug: 'starter',
+    name: 'استارتر (Starter)',
+    durationMonths: 1,
+    priceToman: 5_000_000,
+    oldPriceToman: 9_000_000,
+    priceUSDT: 27,
+    oldPriceUSDT: 45,
+    referralCommissionPercent: 10, // 10% = 500,000 Toman / 2.7 USDT
+    features: [
+      'مدت اشتراک: ۱ ماه',
+      'تا ۵۰ محصول فعال در ویترین فروشگاه',
+      'درگاه پرداخت شاپرک (زرین‌پال) و کریپتو TRC20',
+      'کارمزد ۲٪ تراکنش‌های فروشگاه',
+      'پورسانت همکاری در فروش ۱۰٪',
+    ],
+  },
+  pro: {
+    slug: 'pro',
+    name: 'حرفه‌ای (Pro)',
+    durationMonths: 2,
+    priceToman: 9_000_000,
+    oldPriceToman: 15_000_000,
+    priceUSDT: 52,
+    oldPriceUSDT: 80,
+    referralCommissionPercent: 15, // 15% = 1,350,000 Toman / 7.8 USDT
+    features: [
+      'مدت اشتراک: ۲ ماه (پیشنهادی)',
+      'تا ۲۵۰ محصول فعال با دسته‌بندی دلخواه',
+      'درگاه پرداخت مستقیم با تسویه ۲۴ ساعته',
+      'کارمزد ۱.۵٪ روی تراکنش‌ها',
+      'پورسانت همکاری در فروش ۱۵٪',
+      'حذف نشان تبلیغاتی بایوپی از فوتر ویترین',
+      'پشتیبانی VIP اختصاصی تلگرام',
+    ],
+  },
+  business: {
+    slug: 'business',
+    name: 'سازمانی و تجاری (Business)',
+    durationMonths: 3,
+    priceToman: 12_000_000,
+    oldPriceToman: 20_000_000,
+    priceUSDT: 75,
+    oldPriceUSDT: 110,
+    referralCommissionPercent: 20, // 20% = 2,400,000 Toman / 15 USDT
+    features: [
+      'مدت اشتراک: ۳ ماه (بیشترین بازدهی)',
+      'محصولات نامحدود (تا ۱۰۰۰ عدد)',
+      'تا ۵ فروشگاه مجزا روی یک حساب',
+      'کمترین کارمزد تراکنش: فقط ۱.۰٪',
+      'بالاترین پورسانت ارجاع: ۲۰٪ نقدی به ازای هر خرید',
+      'اتصال به دامنه اختصاصی (Custom Domain)',
+      'مدیر حساب اختصاصی ۲۴ ساعته',
+    ],
+  },
+};
+
 export interface PlanActivationResult {
   success: boolean;
   userId: string;
-  planSlug: 'starter' | 'pro';
+  planSlug: BioPayPlanSlug;
+  durationMonths: number;
   activeUntil: string;
   referralCommissionCredited?: {
     referrerId: string;
     commissionPercent: number;
     commissionAmountToman: number;
+    commissionAmountUsdt: number;
   };
 }
 
@@ -39,7 +114,6 @@ export interface StoredPaymentRecord {
 }
 
 export class PaymentService {
-  // In-memory payment ledger for active transactions
   private payments = new Map<string, StoredPaymentRecord>();
 
   /**
@@ -64,7 +138,7 @@ export class PaymentService {
         planId: params.planId,
         amount: params.amount,
         currency: params.currency || 'TOMAN',
-        gateway: 'ZARINPAL',
+        gateway: params.currency === 'USD' ? 'TRONGRID_USDT' : 'ZARINPAL',
         trackingCode: result.authority,
         status: 'PENDING',
         createdAt: new Date().toISOString(),
@@ -77,7 +151,7 @@ export class PaymentService {
   /**
    * Create a USDT TRC20 session
    */
-  public createUsdtSession(planName: 'Starter' | 'Pro' | 'ReferrerRenewal'): UsdtPaymentSession {
+  public createUsdtSession(planName: 'Starter' | 'Pro' | 'Business' | 'ReferrerRenewal'): UsdtPaymentSession {
     return usdtService.createSession(planName);
   }
 
@@ -85,7 +159,7 @@ export class PaymentService {
    * 2. Verify payment callback from gateway
    */
   public async verifyPayment(
-    params: PaymentVerifyRequest & { userId?: string; planSlug?: 'starter' | 'pro' },
+    params: PaymentVerifyRequest & { userId?: string; planSlug?: BioPayPlanSlug },
     gatewayKey?: string
   ): Promise<PaymentVerifyResult> {
     const gateway = PaymentGatewayFactory.getGateway(gatewayKey);
@@ -104,19 +178,33 @@ export class PaymentService {
   }
 
   /**
-   * 3. Calculate referral commission based on plan
-   * - Starter: 10%
-   * - Pro: 15%
+   * 3. Calculate referral commission dynamically based on the plan config
+   * Starter (1 Mo): 10% (500,000 Toman / 2.7 USDT)
+   * Pro (2 Mo): 15% (1,350,000 Toman / 7.8 USDT)
+   * Business (3 Mo): 20% (2,400,000 Toman / 15 USDT)
    */
   public calculateReferralCommission(
-    planSlug: 'starter' | 'pro',
-    amountToman: number
-  ): { percent: number; commissionToman: number } {
-    const percent = planSlug === 'pro' ? 15 : 10;
-    const commissionToman = Math.round((amountToman * percent) / 100);
+    planSlug: BioPayPlanSlug,
+    customAmountToman?: number
+  ): {
+    percent: number;
+    commissionToman: number;
+    commissionUsdt: number;
+    basePriceToman: number;
+    basePriceUsdt: number;
+  } {
+    const plan = BIOPAY_PLANS[planSlug] || BIOPAY_PLANS.starter;
+    const percent = plan.referralCommissionPercent;
+    const baseToman = customAmountToman ?? plan.priceToman;
+    const commissionToman = Math.round((baseToman * percent) / 100);
+    const commissionUsdt = +( (plan.priceUSDT * percent) / 100 ).toFixed(1);
+
     return {
       percent,
       commissionToman,
+      commissionUsdt,
+      basePriceToman: baseToman,
+      basePriceUsdt: plan.priceUSDT,
     };
   }
 
@@ -125,12 +213,13 @@ export class PaymentService {
    */
   public async activatePlan(params: {
     userId: string;
-    planSlug: 'starter' | 'pro';
-    amountToman: number;
+    planSlug: BioPayPlanSlug;
+    amountToman?: number;
     durationMonths?: number;
     referrerId?: string;
   }): Promise<PlanActivationResult> {
-    const duration = params.durationMonths || 1;
+    const plan = BIOPAY_PLANS[params.planSlug] || BIOPAY_PLANS.starter;
+    const duration = params.durationMonths || plan.durationMonths;
     const expiry = new Date();
     expiry.setMonth(expiry.getMonth() + duration);
 
@@ -142,12 +231,14 @@ export class PaymentService {
         params.referrerId,
         params.userId,
         params.planSlug,
-        commission.commissionToman
+        commission.commissionToman,
+        commission.commissionUsdt
       );
       commissionResult = {
         referrerId: params.referrerId,
         commissionPercent: commission.percent,
         commissionAmountToman: commission.commissionToman,
+        commissionAmountUsdt: commission.commissionUsdt,
       };
     }
 
@@ -155,6 +246,7 @@ export class PaymentService {
       success: true,
       userId: params.userId,
       planSlug: params.planSlug,
+      durationMonths: duration,
       activeUntil: expiry.toISOString(),
       referralCommissionCredited: commissionResult,
     };
@@ -166,19 +258,18 @@ export class PaymentService {
   public async creditReferrer(
     referrerUserId: string,
     refereeUserId: string,
-    planSlug: 'starter' | 'pro',
-    commissionToman: number
-  ): Promise<{ credited: boolean; balanceToman: number }> {
-    // In real app / Prisma:
-    // await prisma.referral.upsert({ ... })
-    // await prisma.user.update({ where: { id: referrerUserId }, data: { walletBalance: { increment: commissionToman } } })
+    planSlug: BioPayPlanSlug,
+    commissionToman: number,
+    commissionUsdt: number
+  ): Promise<{ credited: boolean; balanceToman: number; balanceUsdt: number }> {
     console.log(
-      `[Referral Credit] User ${referrerUserId} credited with ${commissionToman} Toman from referee ${refereeUserId} (Plan: ${planSlug})`
+      `[Referral Credit] Referrer ${referrerUserId} credited with ${commissionToman.toLocaleString('fa-IR')} Toman (${commissionUsdt} USDT) from referee ${refereeUserId} (Plan: ${planSlug})`
     );
 
     return {
       credited: true,
       balanceToman: commissionToman,
+      balanceUsdt: commissionUsdt,
     };
   }
 }

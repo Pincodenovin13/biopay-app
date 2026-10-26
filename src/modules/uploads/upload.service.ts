@@ -1,17 +1,26 @@
 /**
- * Secure file upload service with MIME magic-byte verification and WebP compression
+ * BioPay Device File Upload Service
+ *
+ * Handles:
+ * - Native file picker / camera trigger (Gallery vs Camera)
+ * - Compression to WebP (< 2 MB)
+ * - Verification of magic bytes
+ * - Destination format: `public/uploads/{userId}/{type}/[timestamp]-[name].webp`
  */
 
 export interface UploadResult {
   success: boolean;
   filePath?: string;
+  previewUrl?: string;
   originalName?: string;
   mimeType?: string;
-  sizeBytes?: number;
+  originalSizeBytes?: number;
   compressedSizeBytes?: number;
   reductionPercent?: number;
   error?: string;
 }
+
+export type UploadTargetType = 'avatar' | 'banner' | 'product';
 
 export const MAX_UPLOAD_SIZE = 2 * 1024 * 1024; // 2 Megabytes
 
@@ -60,7 +69,7 @@ export function verifyImageMagicBytes(buffer: Uint8Array): { isValid: boolean; d
 }
 
 /**
- * Process client-side image file and compress to WebP with target quality
+ * Process image file and compress to WebP with target dimension and quality
  */
 export async function compressImageToWebp(file: File, quality: number = 0.82): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -69,10 +78,9 @@ export async function compressImageToWebp(file: File, quality: number = 0.82): P
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        // Max dimension bounds (e.g., 1400px width/height for product display)
         let width = img.width;
         let height = img.height;
-        const maxDim = 1400;
+        const maxDim = 1600;
 
         if (width > maxDim || height > maxDim) {
           if (width > height) {
@@ -112,4 +120,55 @@ export async function compressImageToWebp(file: File, quality: number = 0.82): P
     reader.onerror = () => reject(new Error('File reader failed'));
     reader.readAsDataURL(file);
   });
+}
+
+/**
+ * Process client-side device upload for Avatar, Banner, or Product
+ * Returns target destination in `public/uploads/{userId}/{type}/`
+ */
+export async function processDeviceUpload(params: {
+  file: File;
+  userId: string;
+  type: UploadTargetType;
+}): Promise<UploadResult> {
+  try {
+    const originalSize = params.file.size;
+    const sanitizedName = params.file.name
+      .replace(/[^a-zA-Z0-9.-]/g, '_')
+      .replace(/\.[^/.]+$/, '');
+
+    // Compress to WebP
+    const compressedBlob = await compressImageToWebp(params.file, 0.82);
+
+    if (compressedBlob.size > MAX_UPLOAD_SIZE) {
+      return {
+        success: false,
+        error: `حجم تصویر حتی پس از فشرده‌سازی (${(compressedBlob.size / (1024 * 1024)).toFixed(2)} MB) بیشتر از حد مجاز ۲ مگابایت است.`,
+      };
+    }
+
+    const timestamp = Date.now();
+    const destinationPath = `public/uploads/${params.userId}/${params.type}/${timestamp}-${sanitizedName}.webp`;
+    const previewUrl = URL.createObjectURL(compressedBlob);
+    const reductionPercent = Math.max(
+      0,
+      Math.round(((originalSize - compressedBlob.size) / originalSize) * 100)
+    );
+
+    return {
+      success: true,
+      filePath: destinationPath,
+      previewUrl,
+      originalName: params.file.name,
+      mimeType: 'image/webp',
+      originalSizeBytes: originalSize,
+      compressedSizeBytes: compressedBlob.size,
+      reductionPercent,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err.message || 'خطا در بارگذاری و پردازش تصویر',
+    };
+  }
 }

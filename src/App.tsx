@@ -8,39 +8,52 @@ import { I18nProvider, useI18n } from './lib/i18n';
 import { Hero } from './components/landing/Hero';
 import { SocialProof } from './components/landing/SocialProof';
 import { StatsSection } from './components/landing/StatsSection';
+import { SalesHowItWorks } from './components/landing/SalesHowItWorks';
 import { FeaturesGrid } from './components/landing/FeaturesGrid';
+import { ReferrerEarningsSection } from './components/landing/ReferrerEarningsSection';
 import { PricingSection } from './components/landing/PricingSection';
 import { FaqAccordion } from './components/landing/FaqAccordion';
 import { LandingFooter } from './components/landing/LandingFooter';
 import { LanguageDropdown } from './components/ui/LanguageDropdown';
 import { Button } from './components/ui/Button';
-import { Modal } from './components/ui/Modal';
-import { Input } from './components/ui/Input';
 import { SellerDashboardView } from './components/dashboard/SellerDashboardView';
+import { RegularUserDashboardView } from './components/dashboard/RegularUserDashboardView';
 import { StorefrontView } from './components/storefront/StorefrontView';
 import { AdminConsoleView } from './components/admin/AdminConsoleView';
-import { Store, ArrowRight, Compass, Shield } from 'lucide-react';
+import RegisterPage from './app/(auth)/register/page';
+import LoginPage from './app/(auth)/login/page';
+import AdminLoginPage from './app/(auth)/admin-login/page';
+import { Store, Shield, Gift, LayoutDashboard, UserCheck } from 'lucide-react';
 
-export type AppRoute = 'landing' | 'dashboard' | 'storefront' | 'admin';
+export type AppRoute =
+  | 'landing'
+  | 'dashboard'
+  | 'referral'
+  | 'storefront'
+  | 'admin'
+  | 'register'
+  | 'login'
+  | 'admin-login';
 
 function BioPayRouter() {
   const { t, direction } = useI18n();
   const [currentRoute, setCurrentRoute] = useState<AppRoute>('landing');
-  
-  // Auth modal state for public landing page
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [phoneInput, setPhoneInput] = useState('');
-  const [authStep, setAuthStep] = useState<'phone' | 'otp'>('phone');
-  const [otpCode, setOtpCode] = useState('');
-  const [authLoading, setAuthLoading] = useState(false);
 
-  // Sync route with URL if path is /dashboard, /admin, or /s/...
+  // Sync route with URL if path matches
   useEffect(() => {
     const path = window.location.pathname;
-    if (path.startsWith('/admin')) {
+    if (path.startsWith('/admin/login')) {
+      setCurrentRoute('admin-login');
+    } else if (path.startsWith('/admin')) {
       setCurrentRoute('admin');
     } else if (path.startsWith('/dashboard')) {
       setCurrentRoute('dashboard');
+    } else if (path.startsWith('/referral')) {
+      setCurrentRoute('referral');
+    } else if (path.startsWith('/register')) {
+      setCurrentRoute('register');
+    } else if (path.startsWith('/login')) {
+      setCurrentRoute('login');
     } else if (path.startsWith('/s/')) {
       setCurrentRoute('storefront');
     }
@@ -49,77 +62,107 @@ function BioPayRouter() {
   const navigateTo = (route: AppRoute) => {
     setCurrentRoute(route);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
 
-  const handleSendOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!phoneInput) return;
-    setAuthLoading(true);
-    setTimeout(() => {
-      setAuthLoading(false);
-      setAuthStep('otp');
-    }, 600);
-  };
+    // Update browser history path
+    if (typeof window !== 'undefined' && window.history) {
+      let targetPath = '/';
+      if (route === 'dashboard') targetPath = '/dashboard';
+      else if (route === 'referral') targetPath = '/referral';
+      else if (route === 'storefront') targetPath = '/s/tehrano_boutique';
+      else if (route === 'admin') targetPath = '/admin';
+      else if (route === 'register') targetPath = '/register';
+      else if (route === 'login') targetPath = '/login';
+      else if (route === 'admin-login') targetPath = '/admin/login';
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!otpCode) return;
-    setAuthLoading(true);
-    setTimeout(() => {
-      setAuthLoading(false);
-      setIsAuthOpen(false);
-      setAuthStep('phone');
-      setPhoneInput('');
-      setOtpCode('');
-      navigateTo('dashboard');
-    }, 600);
+      window.history.pushState({}, '', targetPath);
+    }
   };
 
   // ROUTE 1: SELLER DASHBOARD (/dashboard)
   if (currentRoute === 'dashboard') {
     return (
-      <div>
+      <div className="relative">
         <SellerDashboardView
           onViewStorefront={() => navigateTo('storefront')}
           onLogout={() => navigateTo('landing')}
         />
-        {/* Discreet Route Switcher for Evaluator */}
         <RouteTesterBar currentRoute={currentRoute} onNavigate={navigateTo} />
       </div>
     );
   }
 
-  // ROUTE 2: PUBLIC STOREFRONT (/s/:slug)
+  // ROUTE 2: REGULAR USER / REFERRAL DASHBOARD (/referral)
+  if (currentRoute === 'referral') {
+    return (
+      <div className="relative">
+        <RegularUserDashboardView
+          onLogout={() => navigateTo('landing')}
+          onExploreStorefront={() => navigateTo('storefront')}
+        />
+        <RouteTesterBar currentRoute={currentRoute} onNavigate={navigateTo} />
+      </div>
+    );
+  }
+
+  // ROUTE 3: PUBLIC STOREFRONT (/s/:slug)
   if (currentRoute === 'storefront') {
     return (
-      <div>
+      <div className="relative">
         <StorefrontView
           storeSlug="tehrano_boutique"
           onGoHome={() => navigateTo('landing')}
         />
-        {/* Discreet Route Switcher for Evaluator */}
         <RouteTesterBar currentRoute={currentRoute} onNavigate={navigateTo} />
       </div>
     );
   }
 
-  // ROUTE 3: ISOLATED ADMIN PANEL (/admin)
+  // ROUTE 4: PLATFORM ADMIN CONSOLE (/admin)
   if (currentRoute === 'admin') {
     return (
-      <div>
+      <div className="relative">
         <AdminConsoleView onExitAdmin={() => navigateTo('landing')} />
-        {/* Discreet Route Switcher for Evaluator */}
         <RouteTesterBar currentRoute={currentRoute} onNavigate={navigateTo} />
       </div>
     );
   }
 
-  // ROUTE 4: PUBLIC LANDING PAGE (/)
+  // ROUTE 5: MULTI-ROLE REGISTRATION (/register)
+  if (currentRoute === 'register') {
+    return (
+      <div className="relative">
+        <RegisterPage />
+        <RouteTesterBar currentRoute={currentRoute} onNavigate={navigateTo} />
+      </div>
+    );
+  }
+
+  // ROUTE 6: MULTI-ROLE LOGIN (/login)
+  if (currentRoute === 'login') {
+    return (
+      <div className="relative">
+        <LoginPage />
+        <RouteTesterBar currentRoute={currentRoute} onNavigate={navigateTo} />
+      </div>
+    );
+  }
+
+  // ROUTE 7: ADMIN SECRET PASSKEY LOGIN (/admin/login)
+  if (currentRoute === 'admin-login') {
+    return (
+      <div className="relative">
+        <AdminLoginPage />
+        <RouteTesterBar currentRoute={currentRoute} onNavigate={navigateTo} />
+      </div>
+    );
+  }
+
+  // ROUTE 8: PUBLIC MARKETING LANDING PAGE (/)
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 max-w-full overflow-x-hidden">
       {/* Top Marketing Navigation - Strict 3-Zone Contract with Language Dropdown in Zone 3 */}
       <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 sm:gap-8">
           {/* Zone 1: Brand Wordmark (Single element) */}
           <button
             onClick={() => navigateTo('landing')}
@@ -132,9 +175,15 @@ function BioPayRouter() {
           </button>
 
           {/* Zone 2: Concise Nav Links (NO ADMIN LINK on public landing page!) */}
-          <nav className="hidden md:flex items-center gap-7 text-sm font-semibold text-slate-300">
+          <nav className="hidden lg:flex items-center gap-6 text-sm font-semibold text-slate-300">
             <a href="#features-section" className="hover:text-white transition-colors whitespace-nowrap shrink-0">
               {t('nav.features')}
+            </a>
+            <a href="#how-it-works" className="hover:text-white transition-colors whitespace-nowrap shrink-0">
+              {t('nav.howItWorks')}
+            </a>
+            <a href="#earnings-section" className="hover:text-white transition-colors whitespace-nowrap shrink-0">
+              {t('nav.earnings')}
             </a>
             <a href="#pricing-section" className="hover:text-white transition-colors whitespace-nowrap shrink-0">
               {t('nav.pricing')}
@@ -148,9 +197,9 @@ function BioPayRouter() {
           </nav>
 
           {/* Zone 3: Language Dropdown + Primary CTA */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <button
-              onClick={() => setIsAuthOpen(true)}
+              onClick={() => navigateTo('login')}
               className="text-xs font-semibold text-slate-300 hover:text-white px-2 py-1 transition-colors cursor-pointer"
             >
               {t('nav.login')}
@@ -159,7 +208,8 @@ function BioPayRouter() {
             <Button
               variant="primary"
               size="sm"
-              onClick={() => setIsAuthOpen(true)}
+              onClick={() => navigateTo('register')}
+              className="text-xs font-bold"
             >
               {t('nav.startFree')}
             </Button>
@@ -167,89 +217,41 @@ function BioPayRouter() {
         </div>
       </header>
 
-      {/* Main Marketing Sections */}
-      <main className="flex-1">
-        {/* 1. Hero */}
+      {/* Main Marketing Sections - Complete Suite of Framer Motion Animated Sections */}
+      <main className="flex-1 max-w-full overflow-x-hidden">
+        {/* 1. Hero with Moving Gradient & 3D Phone Mockup */}
         <Hero
-          onStartFree={() => setIsAuthOpen(true)}
+          onStartFree={() => navigateTo('register')}
           onExploreDemo={() => navigateTo('storefront')}
         />
 
-        {/* 2. Social Proof */}
+        {/* 2. Social Proof & Partner Logos */}
         <SocialProof />
 
-        {/* 3. Stats Section with Circular Progress Rings */}
+        {/* 3. Stats Section with Animated Counters & Progress Rings */}
         <StatsSection />
 
-        {/* 4. Features Grid */}
+        {/* 4. Sales "How It Works" with 3 Animated Steps & Looping Showcase */}
+        <SalesHowItWorks />
+
+        {/* 5. Features Grid */}
         <FeaturesGrid />
 
-        {/* 5. Pricing Section with Monthly/Annual Toggle */}
-        <PricingSection onSelectPlan={() => setIsAuthOpen(true)} />
+        {/* 6. Referrer Earnings Section with Floating Coins & Growing Chart */}
+        <ReferrerEarningsSection onOpenReferral={() => navigateTo('referral')} />
 
-        {/* 6. FAQ Accordion */}
+        {/* 7. Strict 3-Plan Pricing Section with Region Detection (Toman vs USDT) */}
+        <PricingSection onSelectPlan={() => navigateTo('register')} />
+
+        {/* 8. FAQ Accordion */}
         <FaqAccordion />
       </main>
 
-      {/* 7. Footer */}
+      {/* 9. Fully Localized Footer */}
       <LandingFooter
         onGoHome={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        onOpenAuth={() => setIsAuthOpen(true)}
+        onOpenAuth={() => navigateTo('register')}
       />
-
-      {/* Auth Modal for Merchants */}
-      <Modal
-        isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
-        title={authStep === 'phone' ? 'ورود و ساخت فروشگاه' : 'تایید کد پیامک‌شده'}
-        description={
-          authStep === 'phone'
-            ? 'شماره موبایل خود را وارد نمایید تا کد تایید برای شما ارسال شود.'
-            : `کد ۶ رقمی ارسال شده به ${phoneInput} را وارد فرمایید (کد تستی: 123456):`
-        }
-      >
-        {authStep === 'phone' ? (
-          <form onSubmit={handleSendOtp} className="space-y-4 text-start">
-            <Input
-              label="شماره موبایل"
-              placeholder="۰۹۱۲۳۴۵۶۷۸۹"
-              value={phoneInput}
-              onChange={(e) => setPhoneInput(e.target.value)}
-              autoFocus
-              required
-            />
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full"
-              isLoading={authLoading}
-            >
-              ارسال کد تایید یکبارمصرف
-            </Button>
-          </form>
-        ) : (
-          <form onSubmit={handleVerifyOtp} className="space-y-4 text-start">
-            <Input
-              label="کد تایید ۶ رقمی"
-              placeholder="123456"
-              maxLength={6}
-              value={otpCode}
-              onChange={(e) => setOtpCode(e.target.value)}
-              className="text-center font-mono text-lg tracking-widest"
-              autoFocus
-              required
-            />
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full"
-              isLoading={authLoading}
-            >
-              تایید و ورود به داشبورد فروشنده
-            </Button>
-          </form>
-        )}
-      </Modal>
 
       {/* Discreet Route Switcher for Evaluator */}
       <RouteTesterBar currentRoute={currentRoute} onNavigate={navigateTo} />
@@ -258,7 +260,7 @@ function BioPayRouter() {
 }
 
 /**
- * Discreet, high-end floating route bar for reviewer to switch between / , /dashboard, /s/tehran-boutique, and /admin
+ * Discreet, high-end floating route bar for reviewer to switch between / , /dashboard, /referral, /s/tehran-boutique, /register, and /admin
  */
 function RouteTesterBar({
   currentRoute,
@@ -267,44 +269,58 @@ function RouteTesterBar({
   currentRoute: AppRoute;
   onNavigate: (route: AppRoute) => void;
 }) {
+  const { t } = useI18n();
+
   return (
     <aside
       aria-label="Route Switcher"
-      className="fixed bottom-4 start-1/2 -translate-x-1/2 z-50 bg-slate-900/90 text-white backdrop-blur-md border border-slate-700/80 rounded-full px-3 py-1.5 shadow-xl flex items-center gap-1.5 text-xs font-semibold"
+      className="fixed bottom-3 start-1/2 -translate-x-1/2 z-50 bg-slate-900/95 text-white backdrop-blur-md border border-slate-700/80 rounded-full px-2.5 py-1.5 shadow-2xl flex items-center gap-1 text-[11px] font-semibold max-w-[96vw] overflow-x-auto"
     >
-      <span className="text-[10px] text-slate-400 font-mono pe-1 hidden sm:inline">مسیرها:</span>
+      <span className="text-[10px] text-slate-400 font-mono pe-1 hidden sm:inline whitespace-nowrap">
+        {t('common.routes')}
+      </span>
       <button
         onClick={() => onNavigate('landing')}
-        className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
+        className={`px-2.5 py-1 rounded-full transition-all cursor-pointer whitespace-nowrap ${
           currentRoute === 'landing' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
         }`}
       >
-        صفحه فرود (/)
+        {t('common.landingPage')}
       </button>
       <button
         onClick={() => onNavigate('dashboard')}
-        className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
+        className={`px-2.5 py-1 rounded-full transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
           currentRoute === 'dashboard' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
         }`}
       >
-        داشبورد فروشنده (/dashboard)
+        <LayoutDashboard className="w-3 h-3" />
+        <span>{t('common.sellerDashboard')}</span>
+      </button>
+      <button
+        onClick={() => onNavigate('referral')}
+        className={`px-2.5 py-1 rounded-full transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+          currentRoute === 'referral' ? 'bg-teal-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
+        }`}
+      >
+        <Gift className="w-3 h-3" />
+        <span>{t('common.referralDashboard')}</span>
       </button>
       <button
         onClick={() => onNavigate('storefront')}
-        className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
+        className={`px-2.5 py-1 rounded-full transition-all cursor-pointer whitespace-nowrap ${
           currentRoute === 'storefront' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
         }`}
       >
-        ویترین بیو (/s/slug)
+        {t('common.bioStorefront')}
       </button>
       <button
         onClick={() => onNavigate('admin')}
-        className={`px-3 py-1 rounded-full transition-all cursor-pointer flex items-center gap-1 ${
+        className={`px-2.5 py-1 rounded-full transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
           currentRoute === 'admin' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
         }`}
       >
         <Shield className="w-3 h-3" />
-        <span>پنل ادمین (/admin)</span>
+        <span>{t('common.adminPanelRoute')}</span>
       </button>
     </aside>
   );

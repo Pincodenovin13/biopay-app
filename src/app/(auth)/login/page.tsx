@@ -2,13 +2,17 @@
 
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Store, ArrowRight, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Store, Gift, ArrowRight, ShieldCheck, Lock } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { generateOtp, verifyOtp, setClientSession } from '../../../lib/auth';
+import { useI18n } from '../../../lib/i18n';
+import { LanguageDropdown } from '../../../components/ui/LanguageDropdown';
 
 export default function LoginPage() {
+  const { t } = useI18n();
+  const [role, setRole] = useState<'seller' | 'referrer'>('seller');
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [phone, setPhone] = useState('');
   const [otpCode, setOtpCode] = useState('');
@@ -42,7 +46,8 @@ export default function LoginPage() {
       if (res.success && res.session) {
         setClientSession(res.session);
         if (typeof window !== 'undefined') {
-          window.location.href = res.session.role === 'ADMIN' ? '/admin' : '/dashboard';
+          // Direct to corresponding dashboard
+          window.location.href = role === 'seller' ? '/dashboard' : '/referral';
         }
       } else {
         setError(res.error || 'کد وارد شده نامعتبر است.');
@@ -56,6 +61,10 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-slate-100">
+      <div className="absolute top-4 end-4">
+        <LanguageDropdown />
+      </div>
+
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -71,12 +80,38 @@ export default function LoginPage() {
             <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md">
               <Store className="w-5 h-5" />
             </div>
-            <span>بایوپی | BioPay</span>
+            <span>{t('common.appName')} | BioPay</span>
           </a>
-          <h2 className="text-lg font-bold text-white">ورود به پنل فروشندگان</h2>
+          <h2 className="text-lg font-bold text-white">
+            {role === 'seller' ? t('auth.sellerLoginTitle') : t('auth.userLoginTitle')}
+          </h2>
           <p className="text-xs text-slate-400">
-            برای مدیریت ویترین اینستاگرام و تسویه‌ها شماره موبایل خود را وارد نمایید
+            {role === 'seller' ? t('auth.sellerLoginSubtitle') : t('auth.userLoginSubtitle')}
           </p>
+        </div>
+
+        {/* Role Segmented Selector */}
+        <div className="flex p-1 bg-slate-900 border border-slate-800 rounded-xl gap-1">
+          <button
+            type="button"
+            onClick={() => setRole('seller')}
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
+              role === 'seller' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Store className="w-3.5 h-3.5" />
+            <span>{t('common.seller')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setRole('referrer')}
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
+              role === 'referrer' ? 'bg-teal-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Gift className="w-3.5 h-3.5" />
+            <span>{t('common.regularUser')}</span>
+          </button>
         </div>
 
         {/* Auth Card */}
@@ -90,8 +125,8 @@ export default function LoginPage() {
           {step === 'phone' ? (
             <form onSubmit={handleSendOtp} className="space-y-4">
               <Input
-                label="شماره موبایل"
-                placeholder="۰۹۱۲۳۴۵۶۷۸۹"
+                label={t('auth.phone')}
+                placeholder={t('auth.phonePlaceholder')}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="bg-slate-950 border-slate-700 text-white font-mono text-start"
@@ -101,19 +136,19 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 variant="primary"
-                className="w-full bg-emerald-600 hover:bg-emerald-700"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 font-bold"
                 isLoading={loading}
               >
-                ارسال کد تایید یکبار مصرف (OTP)
+                {t('auth.sendOtp')}
               </Button>
             </form>
           ) : (
             <form onSubmit={handleVerifyOtp} className="space-y-4">
               <div className="text-xs text-slate-400">
-                کد ارسال شده به شماره <span className="font-mono text-emerald-400">{phone}</span> را وارد نمایید (کد آزمایشی: <span className="font-mono text-white">123456</span>):
+                {t('auth.testOtpHint')}
               </div>
               <Input
-                label="کد تایید ۶ رقمی"
+                label={t('auth.otpCodeLabel')}
                 placeholder="123456"
                 maxLength={6}
                 value={otpCode}
@@ -125,25 +160,31 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 variant="primary"
-                className="w-full bg-emerald-600 hover:bg-emerald-700"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 font-bold"
                 isLoading={loading}
               >
-                تایید و ورود به حساب
+                {t('auth.verifyOtp')}
               </Button>
               <button
                 type="button"
                 onClick={() => setStep('phone')}
                 className="w-full text-center text-xs text-slate-400 hover:text-white cursor-pointer"
               >
-                ویرایش شماره موبایل
+                {t('auth.editInitialInfo')}
               </button>
             </form>
           )}
 
-          <div className="pt-2 border-t border-slate-800 text-center text-xs text-slate-400">
-            حساب کاربری ندارید؟{' '}
-            <a href="/register" className="text-emerald-400 hover:underline font-bold">
-              ثبت‌نام رایگان
+          <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+            <div>
+              {t('auth.dontHaveAccount')}{' '}
+              <a href="/register" className="text-emerald-400 hover:underline font-bold">
+                {t('auth.registerFree')}
+              </a>
+            </div>
+            <a href="/admin/login" className="text-slate-500 hover:text-slate-300 flex items-center gap-1">
+              <Lock className="w-3 h-3" />
+              <span>{t('common.admin')}</span>
             </a>
           </div>
         </Card>
@@ -155,7 +196,7 @@ export default function LoginPage() {
             className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"
           >
             <ArrowRight className="w-3.5 h-3.5" />
-            <span>بازگشت به صفحه اصلی</span>
+            <span>{t('auth.backToHome')}</span>
           </a>
         </div>
       </motion.div>

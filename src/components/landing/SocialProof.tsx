@@ -1,8 +1,8 @@
-import React from 'react';
-import { motion } from 'motion/react';
-import { Star, Quote } from 'lucide-react';
-import { useI18n } from '../../lib/i18n';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Star, Quote, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { Card } from '../ui/Card';
+import { useI18n } from '../../lib/i18n';
 
 const PARTNER_LOGOS = [
   { name: 'Tehran Fashion', symbol: 'TF' },
@@ -14,15 +14,77 @@ const PARTNER_LOGOS = [
 ];
 
 export function SocialProof() {
-  const { t } = useI18n();
+  const { t, direction } = useI18n();
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const testimonials = [
+    {
+      id: 1,
+      name: t('testimonials.t1Name'),
+      role: t('testimonials.t1Role'),
+      avatar: 'MR',
+      color: 'bg-emerald-600',
+      type: t('testimonials.t1Badge'),
+      content: t('testimonials.t1Quote'),
+      rating: 5,
+    },
+    {
+      id: 2,
+      name: t('testimonials.t2Name'),
+      role: t('testimonials.t2Role'),
+      avatar: 'SB',
+      color: 'bg-rose-600',
+      type: t('testimonials.t2Badge'),
+      content: t('testimonials.t2Quote'),
+      rating: 5,
+    },
+    {
+      id: 3,
+      name: t('testimonials.t3Name'),
+      role: t('testimonials.t3Role'),
+      avatar: 'AK',
+      color: 'bg-amber-600',
+      type: t('testimonials.t3Badge'),
+      content: t('testimonials.t3Quote'),
+      rating: 5,
+    },
+    {
+      id: 4,
+      name: t('testimonials.t4Name'),
+      role: t('testimonials.t4Role'),
+      avatar: 'NA',
+      color: 'bg-purple-600',
+      type: t('testimonials.t4Badge'),
+      content: t('testimonials.t4Quote'),
+      rating: 5,
+    },
+  ];
+
+  // 5-second auto-rotating carousel
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % testimonials.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [testimonials.length]);
+
+  const current = testimonials[currentIndex];
+
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1));
+  };
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev + 1) % testimonials.length);
+  };
 
   return (
-    <section className="py-20 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60">
+    <section id="testimonials" className="py-20 lg:py-28 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
-        {/* Logo Cloud */}
+        {/* Partner Logos */}
         <div className="text-center space-y-6">
           <p className="text-xs font-semibold tracking-wider uppercase text-slate-400">
-            {t('hero.trustedBy')}
+            {t('testimonials.trustedByBrands')}
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-6 items-center justify-items-center opacity-70 hover:opacity-100 transition-opacity">
             {PARTNER_LOGOS.map((logo, i) => (
@@ -39,95 +101,101 @@ export function SocialProof() {
           </div>
         </div>
 
-        {/* Testimonials Grid */}
+        {/* Testimonials Auto-Rotating Carousel */}
         <div className="space-y-10">
           <div className="text-center max-w-2xl mx-auto space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+              {t('testimonials.badge')}
+            </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
               {t('testimonials.title')}
             </h2>
-            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
               {t('testimonials.subtitle')}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Testimonial 1 */}
-            <Card hoverEffect className="p-6 flex flex-col justify-between text-start relative">
-              <div className="space-y-4">
-                <div className="flex items-center gap-1 text-amber-500">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-amber-500 text-amber-500" />
-                  ))}
-                </div>
-                <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                  "{t('testimonials.t1Content')}"
-                </p>
-              </div>
+          <div className="max-w-3xl mx-auto relative px-4">
+            <Card hoverEffect className="p-8 sm:p-10 relative overflow-hidden bg-slate-50/80 dark:bg-slate-900/90 border-slate-200 dark:border-slate-800">
+              <Quote className="absolute top-6 end-8 w-16 h-16 text-slate-200 dark:text-slate-800 -z-0 opacity-40 pointer-events-none" />
 
-              <div className="pt-6 mt-6 border-t border-slate-100 dark:border-slate-800 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-sm">
-                  MR
-                </div>
-                <div>
-                  <div className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
-                    {t('testimonials.t1Name')}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={current.id}
+                  initial={{ opacity: 0, x: 25 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -25 }}
+                  transition={{ duration: 0.4 }}
+                  className="space-y-6 relative z-10 text-start"
+                >
+                  {/* Rating Stars & Badge */}
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-1 text-amber-500">
+                      {[...Array(current.rating)].map((_, i) => (
+                        <Star key={i} className="w-4 h-4 fill-amber-500 text-amber-500" />
+                      ))}
+                    </div>
+                    <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                      {current.type}
+                    </span>
                   </div>
-                  <div className="text-[11px] text-slate-500">{t('testimonials.t1Role')}</div>
-                </div>
-              </div>
+
+                  {/* Testimonial Quote */}
+                  <p className="text-sm sm:text-base text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
+                    "{current.content}"
+                  </p>
+
+                  {/* Author Meta */}
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-11 h-11 rounded-full ${current.color} text-white font-bold flex items-center justify-center text-sm shadow-sm`}>
+                        {current.avatar}
+                      </div>
+                      <div>
+                        <div className="font-bold text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <span>{current.name}</span>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">{current.role}</div>
+                      </div>
+                    </div>
+
+                    {/* Progress Dots */}
+                    <div className="flex items-center gap-1.5">
+                      {testimonials.map((_, dotIdx) => (
+                        <button
+                          key={dotIdx}
+                          onClick={() => setCurrentIndex(dotIdx)}
+                          className={`h-2 rounded-full transition-all cursor-pointer ${
+                            currentIndex === dotIdx
+                              ? 'w-6 bg-emerald-500'
+                              : 'w-2 bg-slate-300 dark:bg-slate-700'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
             </Card>
 
-            {/* Testimonial 2 */}
-            <Card hoverEffect className="p-6 flex flex-col justify-between text-start relative">
-              <div className="space-y-4">
-                <div className="flex items-center gap-1 text-amber-500">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-amber-500 text-amber-500" />
-                  ))}
-                </div>
-                <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                  "{t('testimonials.t2Content')}"
-                </p>
-              </div>
-
-              <div className="pt-6 mt-6 border-t border-slate-100 dark:border-slate-800 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-amber-600 text-white font-bold flex items-center justify-center text-sm">
-                  AK
-                </div>
-                <div>
-                  <div className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
-                    {t('testimonials.t2Name')}
-                  </div>
-                  <div className="text-[11px] text-slate-500">{t('testimonials.t2Role')}</div>
-                </div>
-              </div>
-            </Card>
-
-            {/* Testimonial 3 */}
-            <Card hoverEffect className="p-6 flex flex-col justify-between text-start relative">
-              <div className="space-y-4">
-                <div className="flex items-center gap-1 text-amber-500">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-amber-500 text-amber-500" />
-                  ))}
-                </div>
-                <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                  "{t('testimonials.t3Content')}"
-                </p>
-              </div>
-
-              <div className="pt-6 mt-6 border-t border-slate-100 dark:border-slate-800 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-rose-600 text-white font-bold flex items-center justify-center text-sm">
-                  SB
-                </div>
-                <div>
-                  <div className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
-                    {t('testimonials.t3Name')}
-                  </div>
-                  <div className="text-[11px] text-slate-500">{t('testimonials.t3Role')}</div>
-                </div>
-              </div>
-            </Card>
+            {/* Prev/Next Navigation Controls */}
+            <div className="flex justify-center items-center gap-4 mt-6">
+              <button
+                onClick={handlePrev}
+                className="p-2 rounded-full border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+                aria-label="Previous testimonial"
+              >
+                {direction === 'rtl' ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+              </button>
+              <button
+                onClick={handleNext}
+                className="p-2 rounded-full border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+                aria-label="Next testimonial"
+              >
+                {direction === 'rtl' ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+              </button>
+            </div>
           </div>
         </div>
       </div>

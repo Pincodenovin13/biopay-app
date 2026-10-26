@@ -17,6 +17,11 @@ import {
   Sparkles,
   ShieldCheck,
   Check,
+  Menu,
+  LayoutDashboard,
+  Wallet,
+  Settings,
+  Gift,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useI18n } from '../../lib/i18n';
@@ -93,12 +98,13 @@ interface SellerDashboardViewProps {
 }
 
 export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashboardViewProps) {
-  const { t, formatPrice } = useI18n();
+  const { t, formatPrice, locale, region } = useI18n();
   const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
   const [products, setProducts] = useState<ProductItem[]>(INITIAL_PRODUCTS);
   const [currentPlan, setCurrentPlan] = useState<'STARTER' | 'PRO'>('PRO');
   const [copiedLink, setCopiedLink] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   // Payment upgrade modals
   const [isUsdtModalOpen, setIsUsdtModalOpen] = useState(false);
@@ -135,17 +141,17 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
       salesCount: 0,
     };
     setProducts((prev) => [created, ...prev]);
-    showToast('محصول جدید با موفقیت به ویترین افزوده شد.');
+    showToast(locale === 'en' ? 'Product added successfully!' : 'محصول جدید با موفقیت به ویترین افزوده شد.');
   };
 
   const handleUpdateProduct = (updated: ProductItem) => {
     setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-    showToast('تغییرات محصول با موفقیت ذخیره شد.');
+    showToast(t('common.savedSuccess'));
   };
 
   const handleDeleteProduct = (id: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));
-    showToast('محصول با موفقیت از ویترین حذف شد.');
+    showToast(locale === 'en' ? 'Product deleted.' : 'محصول با موفقیت از ویترین حذف شد.');
   };
 
   // Zarinpal Sandbox Activation
@@ -162,7 +168,7 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
       spread: 70,
       origin: { y: 0.6 },
     });
-    showToast(`پلن ${selectedPlanForZarinpal} از درگاه زرین‌پال با موفقیت فعال شد!`);
+    showToast(`${selectedPlanForZarinpal} ${t('common.active')}`);
   };
 
   // USDT Activation
@@ -174,11 +180,11 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
   const handleUsdtSuccess = (planName: string) => {
     setCurrentPlan(planName === 'Pro' ? 'PRO' : 'STARTER');
     setIsUsdtModalOpen(false);
-    showToast(`پلن ${planName} از طریق واریز تتر (USDT TRC20) تایید و فعال شد!`);
+    showToast(`${planName} ${t('common.active')}`);
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden text-slate-900 dark:text-slate-100">
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden text-slate-900 dark:text-slate-100 relative max-w-full">
       {/* Toast Notification */}
       <AnimatePresence>
         {toastMessage && (
@@ -188,13 +194,13 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
             exit={{ opacity: 0, y: -20 }}
             className="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-xl flex items-center gap-2"
           >
-            <CheckCircle2 className="w-4 h-4" />
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{toastMessage}</span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Sidebar Navigation */}
+      {/* Desktop Sidebar Navigation */}
       <DashboardSidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -204,30 +210,72 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
         storeTitle={storeInfo.title}
       />
 
+      {/* Mobile Drawer Sidebar Navigation */}
+      <AnimatePresence>
+        {isMobileDrawerOpen && (
+          <div className="fixed inset-0 z-50 md:hidden flex">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileDrawerOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs"
+            />
+
+            {/* Slide-out Drawer */}
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="relative z-50 h-full max-w-xs w-full bg-white dark:bg-slate-900 shadow-2xl flex"
+            >
+              <DashboardSidebar
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                onViewStorefront={onViewStorefront}
+                onLogout={onLogout}
+                storeSlug={storeInfo.slug}
+                storeTitle={storeInfo.title}
+                isMobileDrawer={true}
+                onCloseMobileDrawer={() => setIsMobileDrawerOpen(false)}
+              />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Top Bar with Language Selector, Notifications, and Store Action */}
-        <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3 text-start">
-            <h1 className="text-base font-bold text-slate-900 dark:text-white">
+      <div className="flex-1 flex flex-col h-full overflow-hidden w-full max-w-full">
+        {/* Top Bar with Mobile Hamburger, Language Selector, Notifications, and Store Action */}
+        <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 flex items-center justify-between shrink-0 gap-3">
+          <div className="flex items-center gap-3 text-start truncate">
+            {/* Mobile Hamburger Button */}
+            <button
+              onClick={() => setIsMobileDrawerOpen(true)}
+              className="md:hidden p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer shrink-0"
+              aria-label="Open menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
               {t('dashboard.title')}
             </h1>
-            <span className="text-slate-300 dark:text-slate-700">|</span>
-            <span className="text-xs text-slate-500 font-medium">
+            <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">|</span>
+            <span className="text-xs text-slate-500 font-medium hidden md:inline truncate max-w-xs">
               {storeInfo.title}
-            </span>
-            <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 border border-emerald-200 dark:border-emerald-800">
-              <Crown className="w-3 h-3 text-amber-500" />
-              <span>پلن {currentPlan === 'PRO' ? 'پرو' : 'استارتر'}</span>
             </span>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             <Button
               variant="outline"
               size="sm"
               onClick={handleCopyStoreLink}
               leftIcon={<Copy className="w-3.5 h-3.5 text-slate-500" />}
+              className="hidden sm:inline-flex text-xs"
             >
               {copiedLink ? t('common.copied') : t('common.copyLink')}
             </Button>
@@ -236,6 +284,7 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
               size="sm"
               onClick={onViewStorefront}
               rightIcon={<ExternalLink className="w-3.5 h-3.5" />}
+              className="text-xs"
             >
               {t('common.viewStore')}
             </Button>
@@ -248,18 +297,18 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
           </div>
         </header>
 
-        {/* Scrollable View Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Scrollable View Content - Note pb-28 to avoid overlap with fixed bottom navigation! */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-28 sm:pb-32 space-y-6 max-w-full">
           {/* TAB 1: OVERVIEW */}
           {activeTab === 'overview' && (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              className="space-y-6"
+              className="space-y-6 max-w-full"
             >
-              {/* 4 Circular Stat Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {/* 4 Stat Cards: Stacked 1 col on mobile, 2 on tablet, 4 on desktop */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
                 {/* Stat 1: Revenue */}
                 <Card className="p-5 flex items-center justify-between text-start">
                   <div className="space-y-1">
@@ -267,16 +316,18 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
                       {t('dashboard.totalRevenue')}
                     </span>
                     <div className="text-xl font-extrabold text-slate-900 dark:text-white font-mono tabular-nums">
-                      ۲۸,۴۵۰,۰۰۰
+                      {region === 'iran' ? '۲۸,۴۵۰,۰۰۰' : '1,420'}
                     </div>
-                    <div className="text-[11px] text-slate-500">{t('common.currencyToman')}</div>
+                    <div className="text-[11px] text-slate-500">
+                      {region === 'iran' ? t('common.currencyToman') : 'USDT'}
+                    </div>
                   </div>
                   <CircularProgress
                     percentage={78}
                     size={64}
                     strokeWidth={6}
                     color="#10b981"
-                    label="۷۸٪"
+                    label="78%"
                   />
                 </Card>
 
@@ -287,16 +338,16 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
                       {t('dashboard.totalOrders')}
                     </span>
                     <div className="text-xl font-extrabold text-slate-900 dark:text-white font-mono tabular-nums">
-                      ۱۲۴
+                      124
                     </div>
-                    <div className="text-[11px] text-emerald-600 font-semibold">+۱۴ این هفته</div>
+                    <div className="text-[11px] text-emerald-600 font-semibold">+14 this week</div>
                   </div>
                   <CircularProgress
                     percentage={85}
                     size={64}
                     strokeWidth={6}
                     color="#059669"
-                    label="۸۵٪"
+                    label="85%"
                   />
                 </Card>
 
@@ -310,7 +361,7 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
                       {products.length}
                     </div>
                     <div className="text-[11px] text-slate-500">
-                      {currentPlan === 'PRO' ? 'ظرفیت نامحدود' : 'از ۱۵ مجاز'}
+                      {currentPlan === 'PRO' ? t('common.active') : '15 max'}
                     </div>
                   </div>
                   <CircularProgress
@@ -329,16 +380,16 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
                       {t('dashboard.planDaysLeft')}
                     </span>
                     <div className="text-xl font-extrabold text-slate-900 dark:text-white font-mono tabular-nums">
-                      ۲۴ روز
+                      24
                     </div>
-                    <div className="text-[11px] text-emerald-600 font-semibold">اشتراک حرفه‌ای فعال</div>
+                    <div className="text-[11px] text-emerald-600 font-semibold">Pro Plan Active</div>
                   </div>
                   <CircularProgress
                     percentage={80}
                     size={64}
                     strokeWidth={6}
                     color="#0ea5e9"
-                    label="۲۴"
+                    label="24d"
                   />
                 </Card>
               </div>
@@ -357,6 +408,7 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
+              className="max-w-full"
             >
               <ProductManagementView
                 products={products}
@@ -375,6 +427,7 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
+              className="max-w-full"
             >
               <CategoryManagementView />
             </motion.div>
@@ -386,6 +439,7 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
+              className="max-w-full"
             >
               <RecentOrdersTable />
             </motion.div>
@@ -397,6 +451,7 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
+              className="max-w-full"
             >
               <WithdrawalsView />
             </motion.div>
@@ -408,6 +463,7 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
+              className="max-w-full"
             >
               <ReferralView
                 onOpenWithdrawalModal={() => setActiveTab('withdrawals')}
@@ -425,137 +481,110 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              className="space-y-6 text-start"
+              className="space-y-6 text-start max-w-full"
             >
               {/* Header */}
               <div>
                 <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                  <CreditCard className="w-6 h-6 text-emerald-600" />
-                  <span>طرح‌های اشتراک و تمدید حساب</span>
+                  <CreditCard className="w-6 h-6 text-emerald-600 shrink-0" />
+                  <span>{t('pricing.title')}</span>
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                  پشتیبانی از پرداخت آنلاین شتابی زرین‌پال و ارز دیجیتال تتر (USDT TRC20)
+                  {t('pricing.subtitle')}
                 </p>
               </div>
 
-              {/* Plans Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* 3 Plans Grid (Starter, Pro, Business) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Plan 1: Starter */}
-                <Card className={`p-6 space-y-5 relative ${currentPlan === 'STARTER' ? 'ring-2 ring-emerald-500' : ''}`}>
+                <Card className={`p-6 space-y-4 relative ${currentPlan === 'STARTER' ? 'ring-2 ring-emerald-500' : ''}`}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-bold text-slate-900 dark:text-white">پلن استارتر (Starter)</h3>
-                      <p className="text-xs text-slate-500">مناسب پیج‌های تازه تاسیس و فروشگاه‌های خرد</p>
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white">{t('pricing.starterTitle')}</h3>
+                      <p className="text-xs text-slate-500">{t('pricing.starterDesc')}</p>
                     </div>
-                    {currentPlan === 'STARTER' && <Badge variant="success">پلن فعال شما</Badge>}
                   </div>
 
                   <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 space-y-1">
-                    <div className="text-2xl font-black text-slate-900 dark:text-white font-mono tabular-nums">
-                      ۹,۰۰۰,۰۰۰ <span className="text-xs font-normal text-slate-500">تومان سالانه</span>
+                    <div className="text-xl font-black text-slate-900 dark:text-white font-mono tabular-nums">
+                      {region === 'iran' ? '۵,۰۰۰,۰۰۰ تومان' : '27 USDT'}
                     </div>
-                    <div className="text-xs font-bold text-teal-600 font-mono">
-                      معادل: 26 USDT (TRC20)
+                    <div className="text-xs text-slate-400 line-through font-mono">
+                      {region === 'iran' ? '۹,۰۰۰,۰۰۰ تومان' : '45 USDT'}
                     </div>
-                    <div className="text-[11px] text-slate-400">کمیسیون معرف: ۱۰٪ (۹۰۰,۰۰۰ تومان / 2.6 USDT)</div>
+                    <div className="text-[11px] text-emerald-600 font-semibold">
+                      {t('pricing.referralCommission')} 10%
+                    </div>
                   </div>
 
-                  <ul className="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
-                    <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      <span>حداکثر ۱۵ محصول همزمان در ویترین</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      <span>تا ۳ تصویر با فرمت WebP برای هر محصول</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      <span>لینک مستقیم سفارش در واتساپ و تلگرام</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      <span>تسویه حساب هفتگی بانکی هر جمعه</span>
-                    </li>
-                  </ul>
-
                   <div className="grid grid-cols-2 gap-2 pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleTriggerZarinpal('Starter')}
-                    >
-                      پرداخت شتاب (زرین‌پال)
+                    <Button variant="outline" size="sm" onClick={() => handleTriggerZarinpal('Starter')}>
+                      زرین‌پال (تومان)
                     </Button>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => handleTriggerUsdt('Starter')}
-                    >
-                      پرداخت تتر (26 USDT)
+                    <Button variant="primary" size="sm" onClick={() => handleTriggerUsdt('Starter')}>
+                      تتر (27 USDT)
                     </Button>
                   </div>
                 </Card>
 
                 {/* Plan 2: Pro */}
-                <Card className={`p-6 space-y-5 relative border-emerald-500/50 bg-linear-to-b from-white to-emerald-50/20 dark:from-slate-900 dark:to-emerald-950/20 ${currentPlan === 'PRO' ? 'ring-2 ring-emerald-500' : ''}`}>
-                  <div className="absolute top-4 end-4">
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500 text-white flex items-center gap-1 shadow-xs">
-                      <Sparkles className="w-3 h-3" />
-                      پیشنهاد ویژه
-                    </span>
-                  </div>
-
+                <Card className={`p-6 space-y-4 relative border-emerald-500/60 ${currentPlan === 'PRO' ? 'ring-2 ring-emerald-500' : ''}`}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-bold text-slate-900 dark:text-white">پلن حرفه‌ای (Pro)</h3>
-                      <p className="text-xs text-slate-500">برای آنلاین‌شاپ‌های پرفروش اینستاگرام</p>
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white">{t('pricing.proTitle')}</h3>
+                      <p className="text-xs text-slate-500">{t('pricing.proDesc')}</p>
                     </div>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-white dark:bg-slate-800/80 border border-emerald-200 dark:border-emerald-800 space-y-1">
-                    <div className="text-2xl font-black text-slate-900 dark:text-white font-mono tabular-nums">
-                      ۱۲,۰۰۰,۰۰۰ <span className="text-xs font-normal text-slate-500">تومان سالانه</span>
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 space-y-1">
+                    <div className="text-xl font-black text-slate-900 dark:text-white font-mono tabular-nums">
+                      {region === 'iran' ? '۹,۰۰۰,۰۰۰ تومان' : '52 USDT'}
                     </div>
-                    <div className="text-xs font-bold text-teal-600 font-mono">
-                      معادل: 53 USDT (TRC20)
+                    <div className="text-xs text-slate-400 line-through font-mono">
+                      {region === 'iran' ? '۱۵,۰۰۰,۰۰۰ تومان' : '80 USDT'}
                     </div>
-                    <div className="text-[11px] text-slate-400">کمیسیون معرف: ۱۵٪ (۱,۸۰۰,۰۰۰ تومان / 7.95 USDT)</div>
+                    <div className="text-[11px] text-emerald-600 font-semibold">
+                      {t('pricing.referralCommission')} 15%
+                    </div>
                   </div>
-
-                  <ul className="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
-                    <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      <span className="font-bold text-slate-900 dark:text-white">تعداد نامحدود محصولات در ویترین</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      <span>تا ۵ تصویر فوق‌سریع WebP برای هر کالا</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      <span>حذف نشان "Powered by BioPay" از فوتر</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      <span>دسترسی کامل به درگاه پرداخت مستقیم آنلاین</span>
-                    </li>
-                  </ul>
 
                   <div className="grid grid-cols-2 gap-2 pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleTriggerZarinpal('Pro')}
-                    >
-                      پرداخت شتاب (زرین‌پال)
+                    <Button variant="outline" size="sm" onClick={() => handleTriggerZarinpal('Pro')}>
+                      زرین‌پال (تومان)
                     </Button>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => handleTriggerUsdt('Pro')}
-                    >
-                      پرداخت تتر (53 USDT)
+                    <Button variant="primary" size="sm" onClick={() => handleTriggerUsdt('Pro')}>
+                      تتر (52 USDT)
+                    </Button>
+                  </div>
+                </Card>
+
+                {/* Plan 3: Business */}
+                <Card className="p-6 space-y-4 relative">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white">{t('pricing.businessTitle')}</h3>
+                      <p className="text-xs text-slate-500">{t('pricing.businessDesc')}</p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 space-y-1">
+                    <div className="text-xl font-black text-slate-900 dark:text-white font-mono tabular-nums">
+                      {region === 'iran' ? '۱۲,۰۰۰,۰۰۰ تومان' : '75 USDT'}
+                    </div>
+                    <div className="text-xs text-slate-400 line-through font-mono">
+                      {region === 'iran' ? '۲۰,۰۰۰,۰۰۰ تومان' : '110 USDT'}
+                    </div>
+                    <div className="text-[11px] text-emerald-600 font-semibold">
+                      {t('pricing.referralCommission')} 20%
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-2">
+                    <Button variant="outline" size="sm" onClick={() => handleTriggerZarinpal('Pro')}>
+                      زرین‌پال (تومان)
+                    </Button>
+                    <Button variant="primary" size="sm" onClick={() => handleTriggerUsdt('Pro')}>
+                      تتر (75 USDT)
                     </Button>
                   </div>
                 </Card>
@@ -569,6 +598,7 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
+              className="max-w-full"
             >
               <StoreSettingsView
                 onSaveToast={(msg) => {
@@ -578,6 +608,62 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
             </motion.div>
           )}
         </div>
+
+        {/* Mobile Fixed Bottom Navigation Bar (Higher z-index z-40, does not overlap content) */}
+        <nav
+          aria-label="Mobile Navigation"
+          className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 flex items-center justify-around py-2 px-1 shadow-lg"
+        >
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`flex flex-col items-center gap-1 p-1 text-[11px] font-semibold transition cursor-pointer ${
+              activeTab === 'overview' ? 'text-emerald-600' : 'text-slate-500 dark:text-slate-400'
+            }`}
+          >
+            <LayoutDashboard className="w-5 h-5" />
+            <span>{t('dashboard.overview')}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('products')}
+            className={`flex flex-col items-center gap-1 p-1 text-[11px] font-semibold transition cursor-pointer ${
+              activeTab === 'products' ? 'text-emerald-600' : 'text-slate-500 dark:text-slate-400'
+            }`}
+          >
+            <Package className="w-5 h-5" />
+            <span>{t('dashboard.products')}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('orders')}
+            className={`flex flex-col items-center gap-1 p-1 text-[11px] font-semibold transition cursor-pointer ${
+              activeTab === 'orders' ? 'text-emerald-600' : 'text-slate-500 dark:text-slate-400'
+            }`}
+          >
+            <ShoppingBag className="w-5 h-5" />
+            <span>{t('dashboard.orders')}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('referral')}
+            className={`flex flex-col items-center gap-1 p-1 text-[11px] font-semibold transition cursor-pointer ${
+              activeTab === 'referral' ? 'text-emerald-600' : 'text-slate-500 dark:text-slate-400'
+            }`}
+          >
+            <Gift className="w-5 h-5" />
+            <span>{t('dashboard.referral')}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`flex flex-col items-center gap-1 p-1 text-[11px] font-semibold transition cursor-pointer ${
+              activeTab === 'settings' ? 'text-emerald-600' : 'text-slate-500 dark:text-slate-400'
+            }`}
+          >
+            <Settings className="w-5 h-5" />
+            <span>{t('dashboard.settings')}</span>
+          </button>
+        </nav>
       </div>
 
       {/* USDT Payment Modal */}
@@ -607,7 +693,7 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
           <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-between text-xs font-semibold">
             <span>مبلغ قابل پرداخت:</span>
             <span className="text-emerald-600 font-mono text-base font-bold tabular-nums">
-              {selectedPlanForZarinpal === 'Pro' ? '۱۲,۰۰۰,۰۰۰ تومان' : '۹,۰۰۰,۰۰۰ تومان'}
+              {selectedPlanForZarinpal === 'Pro' ? '۹,۰۰۰,۰۰۰ تومان' : '۵,۰۰۰,۰۰۰ تومان'}
             </span>
           </div>
 

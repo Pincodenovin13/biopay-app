@@ -7,7 +7,7 @@ export interface CircularProgressProps {
   strokeWidth?: number;
   color?: string; // CSS color or Tailwind class
   trackColor?: string;
-  label?: string;
+  label?: React.ReactNode;
   sublabel?: string;
   className?: string;
 }

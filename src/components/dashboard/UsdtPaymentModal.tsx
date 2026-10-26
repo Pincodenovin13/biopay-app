@@ -10,7 +10,7 @@ import { UsdtPaymentSession, usdtService } from '../../modules/payments/usdt.ser
 interface UsdtPaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  planName: 'Starter' | 'Pro' | 'ReferrerRenewal';
+  planName: 'Starter' | 'Pro' | 'Business' | 'ReferrerRenewal';
   onPlanActivated: (planName: string, txHash: string) => void;
 }
 

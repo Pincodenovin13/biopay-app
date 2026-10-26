@@ -15,6 +15,7 @@ import { useI18n } from '../../lib/i18n';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
+import { DeviceImageUploader } from '../ui/DeviceImageUploader';
 import { compressImageToWebp, verifyImageMagicBytes } from '../../modules/uploads/upload.service';
 
 export interface StoreProfileSettings {
@@ -50,49 +51,17 @@ export function StoreSettingsView({ onSaveToast }: StoreSettingsViewProps) {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
 
-  const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      alert('حجم تصویر نباید بیشتر از ۲ مگابایت باشد.');
-      return;
-    }
-    const buffer = await file.arrayBuffer();
-    if (!verifyImageMagicBytes(new Uint8Array(buffer)).isValid) {
-      alert('فرمت فایل نامعتبر است.');
-      return;
-    }
-    const compressed = await compressImageToWebp(file, 0.82);
-    setAvatarPreview(URL.createObjectURL(compressed));
-  };
-
-  const handleBannerFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      alert('حجم تصویر نباید بیشتر از ۲ مگابایت باشد.');
-      return;
-    }
-    const buffer = await file.arrayBuffer();
-    if (!verifyImageMagicBytes(new Uint8Array(buffer)).isValid) {
-      alert('فرمت فایل نامعتبر است.');
-      return;
-    }
-    const compressed = await compressImageToWebp(file, 0.85);
-    setBannerPreview(URL.createObjectURL(compressed));
-  };
-
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     setTimeout(() => {
       setIsSaving(false);
       onSaveToast(t('common.savedSuccess'));
-    }, 800);
+    }, 600);
   };
 
   return (
-    <div className="space-y-8 text-start max-w-4xl mx-auto">
+    <div className="space-y-8 text-start max-w-4xl mx-auto w-full overflow-x-hidden">
       {/* Title */}
       <div>
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">
@@ -103,61 +72,61 @@ export function StoreSettingsView({ onSaveToast }: StoreSettingsViewProps) {
         </p>
       </div>
 
-      {/* Live Store Header Preview (What customers see) */}
-      <div className="space-y-3">
+      {/* Live Store Header Preview (Fix Issue 7.1: overflow-hidden & proper aspect-ratio) */}
+      <div className="space-y-3 w-full max-w-full">
         <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-          <Eye className="w-4 h-4 text-emerald-600" />
+          <Eye className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{t('settings.livePreview')}</span>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
-          {/* Banner */}
-          <div className="relative h-28 bg-linear-to-r from-emerald-600 via-teal-700 to-slate-900">
+        <div className="w-full max-w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm relative">
+          {/* Banner with fixed aspect ratio and overflow-hidden */}
+          <div className="relative w-full aspect-[16/6] sm:aspect-[16/4] max-h-36 overflow-hidden bg-gradient-to-r from-emerald-600 via-teal-700 to-slate-900">
             {bannerPreview && (
               <img src={bannerPreview} alt="Banner" className="w-full h-full object-cover" />
             )}
-            <div className="absolute inset-0 bg-black/15" />
+            <div className="absolute inset-0 bg-black/15 pointer-events-none" />
           </div>
 
           {/* Profile Header Content */}
-          <div className="p-6 text-center -mt-12 space-y-3 relative z-10">
+          <div className="p-4 sm:p-6 text-center -mt-10 sm:-mt-12 space-y-3 relative z-10 max-w-full overflow-hidden">
             {/* Avatar */}
-            <div className="w-20 h-20 rounded-full ring-4 ring-white dark:ring-slate-900 bg-linear-to-tr from-emerald-500 to-amber-500 mx-auto p-0.5 shadow-md">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full ring-4 ring-white dark:ring-slate-900 bg-gradient-to-tr from-emerald-500 to-amber-500 mx-auto p-0.5 shadow-md shrink-0 overflow-hidden">
               {avatarPreview ? (
                 <img src={avatarPreview} alt="Avatar" className="w-full h-full rounded-full object-cover" />
               ) : (
-                <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center font-black text-xl text-white">
+                <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center font-black text-lg sm:text-xl text-white">
                   {settings.title.slice(0, 2)}
                 </div>
               )}
             </div>
 
-            <div className="space-y-1">
-              <div className="flex items-center justify-center gap-2">
-                <h3 className="font-black text-base text-slate-900 dark:text-white">
+            <div className="space-y-1 max-w-full px-2">
+              <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white truncate max-w-xs">
                   {settings.title || 'عنوان فروشگاه'}
                 </h3>
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 fill-emerald-500 text-white" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 fill-emerald-500 text-white shrink-0" />
               </div>
               <span className="inline-block text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
                 {settings.industry || 'صنف کاری'}
               </span>
-              <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md mx-auto pt-1 leading-relaxed">
+              <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md mx-auto pt-1 leading-relaxed break-words">
                 {settings.bio || 'توضیحات و بیوگرافی فروشگاه...'}
               </p>
             </div>
 
             {/* Quick Contact Bar Preview */}
-            <div className="flex items-center justify-center gap-2 pt-2">
+            <div className="flex items-center justify-center gap-2 pt-2 flex-wrap">
               {settings.whatsappNumber && (
                 <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold shadow-xs">
-                  <MessageCircle className="w-3.5 h-3.5" />
+                  <MessageCircle className="w-3.5 h-3.5 shrink-0" />
                   <span>{t('storefront.chatWhatsApp')}</span>
                 </div>
               )}
               {settings.telegramHandle && (
                 <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 text-white text-xs font-semibold shadow-xs">
-                  <Send className="w-3.5 h-3.5" />
+                  <Send className="w-3.5 h-3.5 shrink-0" />
                   <span>{t('storefront.viewTelegram')}</span>
                 </div>
               )}
@@ -167,7 +136,7 @@ export function StoreSettingsView({ onSaveToast }: StoreSettingsViewProps) {
       </div>
 
       {/* Settings Form */}
-      <Card className="p-6">
+      <Card className="p-4 sm:p-6 w-full max-w-full">
         <form onSubmit={handleSave} className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
@@ -211,28 +180,32 @@ export function StoreSettingsView({ onSaveToast }: StoreSettingsViewProps) {
             />
 
             {/* Avatar Upload */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                {t('settings.avatar')} (WebP فشرده خودکار)
-              </label>
-              <label className="flex items-center gap-3 p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors text-xs text-slate-600 dark:text-slate-300">
-                <Camera className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span className="truncate">انتخاب تصویر لوگو (حداکثر ۲MB)</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleAvatarFile} />
-              </label>
+            <div>
+              <DeviceImageUploader
+                userId="usr_seller_01"
+                type="avatar"
+                label={`${t('settings.avatar')} (گالری یا دوربین - WebP)`}
+                currentImageUrl={avatarPreview || undefined}
+                onUploadSuccess={(res) => {
+                  if (res.previewUrl) setAvatarPreview(res.previewUrl);
+                  setSettings((prev) => ({ ...prev, avatarUrl: res.filePath }));
+                }}
+              />
             </div>
           </div>
 
           {/* Banner Upload */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-              {t('settings.banner')} (تصویر افقی بنر هدر)
-            </label>
-            <label className="flex items-center gap-3 p-3 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors text-xs text-slate-600 dark:text-slate-300">
-              <Upload className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>انتخاب تصویر بنر ویترین (ابعاد پیشنهادی ۱۲۰۰x۳۰۰ پیکسل)</span>
-              <input type="file" accept="image/*" className="hidden" onChange={handleBannerFile} />
-            </label>
+          <div>
+            <DeviceImageUploader
+              userId="usr_seller_01"
+              type="banner"
+              label={`${t('settings.banner')} (بنر افقی فروشگاه - WebP)`}
+              currentImageUrl={bannerPreview || undefined}
+              onUploadSuccess={(res) => {
+                if (res.previewUrl) setBannerPreview(res.previewUrl);
+                setSettings((prev) => ({ ...prev, bannerUrl: res.filePath }));
+              }}
+            />
           </div>
 
           <div className="space-y-1.5">

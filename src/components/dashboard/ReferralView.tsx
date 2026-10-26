@@ -32,27 +32,27 @@ interface ReferredSeller {
 const SAMPLE_REFERRED: ReferredSeller[] = [
   {
     id: 'ref_1',
-    sellerIdentifier: '0912***4455 (بوتیک شیراز)',
-    planName: 'Pro',
+    sellerIdentifier: '0912***4455 (مزون سلیمی)',
+    planName: 'Business',
     date: '1403/08/01',
-    commissionToman: 1800000,
-    commissionUsdt: 7.95,
+    commissionToman: 2400000, // 20% of 12,000,000
+    commissionUsdt: 15.0,     // 20% of 75
   },
   {
     id: 'ref_2',
     sellerIdentifier: '0935***9988 (کافه اکسسوری)',
-    planName: 'Starter',
+    planName: 'Pro',
     date: '1403/07/28',
-    commissionToman: 900000,
-    commissionUsdt: 2.6,
+    commissionToman: 1350000, // 15% of 9,000,000
+    commissionUsdt: 7.8,      // 15% of 52
   },
   {
     id: 'ref_3',
     sellerIdentifier: 'seller_dubai@gmail.com',
-    planName: 'Pro',
+    planName: 'Starter',
     date: '1403/07/25',
-    commissionToman: 1800000,
-    commissionUsdt: 7.95,
+    commissionToman: 500000,  // 10% of 5,000,000
+    commissionUsdt: 2.7,      // 10% of 27
   },
 ];
 

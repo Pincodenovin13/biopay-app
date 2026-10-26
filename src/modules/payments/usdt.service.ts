@@ -4,9 +4,9 @@
 
 export interface UsdtPaymentSession {
   sessionId: string;
-  planName: 'Starter' | 'Pro' | 'ReferrerRenewal';
+  planName: 'Starter' | 'Pro' | 'Business' | 'ReferrerRenewal';
   baseAmountUsdt: number;
-  exactAmountUsdt: number; // base + unique fractional offset e.g. 26.0142
+  exactAmountUsdt: number; // base + unique fractional offset e.g. 27.0142
   depositAddress: string;
   expiresAt: number; // Unix timestamp
   status: 'PENDING' | 'CONFIRMED' | 'EXPIRED';
@@ -28,9 +28,10 @@ export class UsdtPaymentService {
   /**
    * Create a unique deposit session for the user
    */
-  public createSession(planName: 'Starter' | 'Pro' | 'ReferrerRenewal'): UsdtPaymentSession {
-    let baseAmount = 26;
-    if (planName === 'Pro') baseAmount = 53;
+  public createSession(planName: 'Starter' | 'Pro' | 'Business' | 'ReferrerRenewal'): UsdtPaymentSession {
+    let baseAmount = 27; // Starter
+    if (planName === 'Pro') baseAmount = 52;
+    if (planName === 'Business') baseAmount = 75;
     if (planName === 'ReferrerRenewal') baseAmount = 15;
 
     // Generate unique 4-decimal offset (e.g. 0.0123)

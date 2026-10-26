@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { Hero } from '../components/landing/Hero';
 import { SocialProof } from '../components/landing/SocialProof';
 import { StatsSection } from '../components/landing/StatsSection';
+import { SalesHowItWorks } from '../components/landing/SalesHowItWorks';
+import { ReferrerEarningsSection } from '../components/landing/ReferrerEarningsSection';
 import { FeaturesGrid } from '../components/landing/FeaturesGrid';
 import { PricingSection } from '../components/landing/PricingSection';
 import { FaqAccordion } from '../components/landing/FaqAccordion';
@@ -13,10 +15,10 @@ import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 import { useI18n } from '../lib/i18n';
-import { Store, ArrowRight } from 'lucide-react';
+import { Store } from 'lucide-react';
 
 export default function LandingPage() {
-  const { t, direction } = useI18n();
+  const { t } = useI18n();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [phoneInput, setPhoneInput] = useState('');
   const [authStep, setAuthStep] = useState<'phone' | 'otp'>('phone');
@@ -49,9 +51,9 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-x-hidden w-full max-w-full">
       {/* Top Marketing Navigation - Strict 3-Zone Contract with Language Dropdown in Zone 3 */}
-      <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 text-white">
+      <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 text-white w-full">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-8">
           {/* Zone 1: Brand wordmark (single element) */}
           <a
@@ -69,8 +71,14 @@ export default function LandingPage() {
             <a href="#features-section" className="hover:text-white transition-colors whitespace-nowrap shrink-0">
               {t('nav.features')}
             </a>
+            <a href="#how-it-works" className="hover:text-white transition-colors whitespace-nowrap shrink-0">
+              نحوه کار
+            </a>
             <a href="#pricing-section" className="hover:text-white transition-colors whitespace-nowrap shrink-0">
               {t('nav.pricing')}
+            </a>
+            <a href="#referral-section" className="hover:text-white transition-colors whitespace-nowrap shrink-0">
+              همکاری در فروش (۲۰٪)
             </a>
             <a href="#testimonials" className="hover:text-white transition-colors whitespace-nowrap shrink-0">
               {t('nav.testimonials')}
@@ -95,8 +103,8 @@ export default function LandingPage() {
       </header>
 
       {/* Main Landing Page Content */}
-      <main className="flex-1">
-        {/* 1. Hero Section */}
+      <main className="flex-1 w-full max-w-full overflow-x-hidden">
+        {/* 1. Hero Section (Animated Gradient Mesh, Floating 3D Phone, Pulsing CTA) */}
         <Hero
           onStartFree={handleStartFree}
           onExploreDemo={() => {
@@ -104,23 +112,37 @@ export default function LandingPage() {
           }}
         />
 
-        {/* 2. Social Proof Section */}
-        <SocialProof />
-
-        {/* 3. Stats Section with Circular Progress Rings */}
+        {/* 2. Stats Section with Circular Progress Rings & Animated Counters */}
         <StatsSection />
 
-        {/* 4. Features Section */}
-        <FeaturesGrid />
+        {/* 3. Sales & Ads "How it works" 3 Steps with Looping Showcase */}
+        <div id="how-it-works">
+          <SalesHowItWorks />
+        </div>
 
-        {/* 5. Pricing Section */}
+        {/* 4. Referrer Earnings Section (Floating Coins, 20% commission, Growing Chart) */}
+        <div id="referral-section">
+          <ReferrerEarningsSection />
+        </div>
+
+        {/* 5. Features Section */}
+        <div id="features-section">
+          <FeaturesGrid />
+        </div>
+
+        {/* 6. Pricing Section (Strictly 3 Plans: Starter 1mo, Pro 2mo, Business 3mo) */}
         <PricingSection onSelectPlan={() => handleStartFree()} />
 
-        {/* 6. FAQ Accordion */}
-        <FaqAccordion />
+        {/* 7. Testimonials & Social Proof (5s Auto-Rotating Carousel) */}
+        <SocialProof />
+
+        {/* 8. FAQ Accordion */}
+        <div id="faq-section">
+          <FaqAccordion />
+        </div>
       </main>
 
-      {/* 7. Footer */}
+      {/* Footer */}
       <LandingFooter
         onGoHome={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         onOpenAuth={handleStartFree}

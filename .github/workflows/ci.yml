@@ -37,7 +37,7 @@ jobs:
           fi
 
       - name: Generate Prisma Client
-        run: npx --yes prisma generate || true
+        run: npx prisma generate
 
       - name: TypeScript Compile Check
         run: npm run lint
@@ -104,7 +104,7 @@ jobs:
           fi
 
       - name: Generate Prisma Client
-        run: npx --yes prisma generate || true
+        run: npx prisma generate
 
       - name: Build Application
         run: npm run build

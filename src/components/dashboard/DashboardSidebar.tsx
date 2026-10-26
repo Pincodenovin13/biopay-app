@@ -11,6 +11,7 @@ import {
   ExternalLink,
   LogOut,
   Store,
+  X,
 } from 'lucide-react';
 import { useI18n } from '../../lib/i18n';
 
@@ -31,6 +32,8 @@ interface DashboardSidebarProps {
   onLogout: () => void;
   storeSlug: string;
   storeTitle: string;
+  onCloseMobileDrawer?: () => void;
+  isMobileDrawer?: boolean;
 }
 
 export function DashboardSidebar({
@@ -40,6 +43,8 @@ export function DashboardSidebar({
   onLogout,
   storeSlug,
   storeTitle,
+  onCloseMobileDrawer,
+  isMobileDrawer = false,
 }: DashboardSidebarProps) {
   const { t } = useI18n();
 
@@ -55,14 +60,32 @@ export function DashboardSidebar({
   ];
 
   return (
-    <aside className="w-64 bg-white dark:bg-slate-900 border-e border-slate-200 dark:border-slate-800 flex flex-col justify-between shrink-0 h-full">
-      <div className="p-5 space-y-6">
-        {/* Brand Header */}
-        <div className="flex items-center gap-2.5 text-slate-900 dark:text-white font-extrabold text-lg">
-          <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-xs">
-            <Store className="w-4 h-4" />
+    <aside
+      className={`bg-white dark:bg-slate-900 flex flex-col justify-between shrink-0 h-full ${
+        isMobileDrawer
+          ? 'w-72 shadow-2xl z-50'
+          : 'w-64 border-e border-slate-200 dark:border-slate-800 hidden md:flex'
+      }`}
+    >
+      <div className="p-5 space-y-5 overflow-y-auto">
+        {/* Brand Header & Mobile Close Button */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5 text-slate-900 dark:text-white font-extrabold text-lg">
+            <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-xs">
+              <Store className="w-4 h-4" />
+            </div>
+            <span>{t('common.appName')}</span>
           </div>
-          <span>{t('common.appName')}</span>
+
+          {isMobileDrawer && onCloseMobileDrawer && (
+            <button
+              onClick={onCloseMobileDrawer}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              aria-label="Close menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* Store Card / Direct Link Button */}
@@ -71,7 +94,10 @@ export function DashboardSidebar({
             {storeTitle}
           </div>
           <button
-            onClick={onViewStorefront}
+            onClick={() => {
+              onViewStorefront();
+              if (onCloseMobileDrawer) onCloseMobileDrawer();
+            }}
             className="w-full flex items-center justify-between text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold hover:underline cursor-pointer"
           >
             <span className="font-mono truncate">/s/{storeSlug}</span>
@@ -87,8 +113,11 @@ export function DashboardSidebar({
             return (
               <button
                 key={item.id}
-                onClick={() => onTabChange(item.id)}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                onClick={() => {
+                  onTabChange(item.id);
+                  if (onCloseMobileDrawer) onCloseMobileDrawer();
+                }}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
                   isActive
                     ? 'bg-emerald-600 text-white shadow-sm'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
@@ -106,7 +135,7 @@ export function DashboardSidebar({
       <div className="p-5 border-t border-slate-100 dark:border-slate-800">
         <button
           onClick={onLogout}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+          className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
         >
           <LogOut className="w-4 h-4" />
           <span>{t('common.logout')}</span>

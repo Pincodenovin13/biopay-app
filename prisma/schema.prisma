@@ -65,6 +65,8 @@ model User {
   name                 String?
   role                 Role         @default(USER)
   status               UserStatus   @default(ACTIVE)
+  lastLoginAt          DateTime?
+  inactivityWarningSentAt DateTime?
   telegramChatId       String?      @unique
   referralCode         String       @unique
   referredById         String?
@@ -222,21 +224,27 @@ model Referral {
 }
 
 model Plan {
-  id                    String       @id @default(cuid())
-  name                  String
-  slug                  String       @unique
-  priceMonthly          BigInt
-  priceAnnual           BigInt
-  priceUSDTMonthly      Float?
-  priceUSDTAnnual       Float?
-  maxProducts           Int          @default(50)
-  maxStores             Int          @default(1)
-  transactionFeePercent Float        @default(1.5)
-  features              String[]     @default([])
-  isActive              Boolean      @default(true)
-  bundles               PlanBundle[]
-  createdAt             DateTime     @default(now())
-  updatedAt             DateTime     @updatedAt
+  id                        String       @id @default(cuid())
+  name                      String
+  slug                      String       @unique
+  durationMonths            Int          @default(1)
+  priceToman                BigInt       @default(5000000)
+  oldPriceToman             BigInt?      @default(9000000)
+  priceUSDT                 Float        @default(27)
+  oldPriceUSDT              Float?       @default(45)
+  priceMonthly              BigInt?
+  priceAnnual               BigInt?
+  priceUSDTMonthly          Float?
+  priceUSDTAnnual           Float?
+  referralCommissionPercent Float        @default(10.0)
+  maxProducts               Int          @default(50)
+  maxStores                 Int          @default(1)
+  transactionFeePercent     Float        @default(1.5)
+  features                  String[]     @default([])
+  isActive                  Boolean      @default(true)
+  bundles                   PlanBundle[]
+  createdAt                 DateTime     @default(now())
+  updatedAt                 DateTime     @updatedAt
 
   @@index([slug])
 }

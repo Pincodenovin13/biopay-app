@@ -1,10 +1,12 @@
 import React from 'react';
-import { Store, Instagram, Send, Mail } from 'lucide-react';
+import { Store, Instagram, Send, Mail, ShieldCheck, Headphones, Zap } from 'lucide-react';
 import { useI18n } from '../../lib/i18n';
 
 interface LandingFooterProps {
   onGoHome: () => void;
   onOpenAuth: () => void;
+  onOpenTerms?: () => void;
+  onOpenPrivacy?: () => void;
 }
 
 export function LandingFooter({ onGoHome, onOpenAuth }: LandingFooterProps) {
@@ -16,14 +18,17 @@ export function LandingFooter({ onGoHome, onOpenAuth }: LandingFooterProps) {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 text-start">
           {/* Brand Info Column */}
           <div className="col-span-2 space-y-4">
-            <div className="flex items-center gap-2.5 text-white font-black text-xl">
-              <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white">
+            <button
+              onClick={onGoHome}
+              className="flex items-center gap-2.5 text-white font-black text-xl hover:opacity-90 transition-opacity cursor-pointer"
+            >
+              <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-xs">
                 <Store className="w-5 h-5" />
               </div>
               <span>{t('common.appName')}</span>
-            </div>
+            </button>
             <p className="text-xs sm:text-sm text-slate-400 max-w-sm leading-relaxed">
-              {t('common.tagline')}. پلتفرم تخصصی تجارت اجتماعی برای رشد پایدار و تسویه سریع فروشندگان آنلاین.
+              {t('common.tagline')}. {t('footer.aboutText')}
             </p>
             <div className="flex items-center gap-3 pt-2">
               <a
@@ -56,26 +61,26 @@ export function LandingFooter({ onGoHome, onOpenAuth }: LandingFooterProps) {
 
           {/* Column 1: Product */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider">محصول</h4>
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider">{t('footer.productTitle')}</h4>
             <ul className="space-y-2 text-xs">
               <li>
                 <a href="#features-section" className="hover:text-white transition-colors">
-                  ویترین در بیو
+                  {t('footer.linkBio')}
                 </a>
               </li>
               <li>
                 <a href="#pricing-section" className="hover:text-white transition-colors">
-                  تعرفه‌ها و پلن‌ها
+                  {t('footer.plansPricing')}
                 </a>
               </li>
               <li>
-                <button onClick={onOpenAuth} className="hover:text-white transition-colors cursor-pointer">
-                  ثبت‌نام فروشندگان
+                <button onClick={onOpenAuth} className="hover:text-white transition-colors cursor-pointer text-start">
+                  {t('footer.merchantRegister')}
                 </button>
               </li>
               <li>
                 <a href="#faq-section" className="hover:text-white transition-colors">
-                  راهنمای تسویه
+                  {t('footer.payoutGuide')}
                 </a>
               </li>
             </ul>
@@ -83,40 +88,54 @@ export function LandingFooter({ onGoHome, onOpenAuth }: LandingFooterProps) {
 
           {/* Column 2: Company */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider">شرکت</h4>
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider">{t('footer.companyTitle')}</h4>
             <ul className="space-y-2 text-xs">
               <li>
                 <a href="#testimonials" className="hover:text-white transition-colors">
-                  داستان مشتریان
+                  {t('footer.customerStories')}
                 </a>
               </li>
               <li>
-                <span className="text-slate-500">درباره ما</span>
+                <a href="#features-section" className="hover:text-white transition-colors">
+                  {t('footer.aboutUs')}
+                </a>
               </li>
               <li>
-                <span className="text-slate-500">فرصت‌های شغلی</span>
+                <a href="mailto:careers@biopay.me" className="hover:text-white transition-colors">
+                  {t('footer.careers')}
+                </a>
               </li>
               <li>
-                <span className="text-slate-500">تماس با پشتیبانی</span>
+                <a href="mailto:support@biopay.me" className="hover:text-white transition-colors">
+                  {t('footer.contactSupport')}
+                </a>
               </li>
             </ul>
           </div>
 
           {/* Column 3: Legal & Security */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider">حقوقی و امنیت</h4>
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider">{t('footer.legalTitle')}</h4>
             <ul className="space-y-2 text-xs">
               <li>
-                <span className="text-slate-500">قوانین و مقررات</span>
+                <a href="#faq-section" className="hover:text-white transition-colors">
+                  {t('footer.termsOfService')}
+                </a>
               </li>
               <li>
-                <span className="text-slate-500">حفظ حریم خصوصی</span>
+                <a href="#faq-section" className="hover:text-white transition-colors">
+                  {t('footer.privacyPolicy')}
+                </a>
               </li>
               <li>
-                <span className="text-slate-500">ضمانت تسویه وجوه</span>
+                <a href="#pricing-section" className="hover:text-white transition-colors">
+                  {t('footer.payoutGuarantee')}
+                </a>
               </li>
               <li>
-                <span className="text-slate-500">پروتکل‌های امنیتی</span>
+                <a href="#features-section" className="hover:text-white transition-colors">
+                  {t('footer.securityProtocols')}
+                </a>
               </li>
             </ul>
           </div>
@@ -125,14 +144,23 @@ export function LandingFooter({ onGoHome, onOpenAuth }: LandingFooterProps) {
         {/* Bottom Copyright */}
         <div className="pt-8 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <div>
-            © 2026 BioPay Inc. تمامی حقوق برای پلتفرم تجارت اجتماعی بایوپی محفوظ است.
+            {t('footer.copyright')}
           </div>
-          <div className="flex items-center gap-6">
-            <span>امنیت شتاب و شاپرک</span>
+          <div className="flex items-center gap-4 sm:gap-6 flex-wrap justify-center">
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+              <span>{t('footer.shetabSecurity')}</span>
+            </span>
             <span>·</span>
-            <span>پشتیبانی اختصاصی</span>
+            <span className="flex items-center gap-1.5">
+              <Headphones className="w-3.5 h-3.5 text-emerald-500" />
+              <span>{t('footer.dedicatedSupport')}</span>
+            </span>
             <span>·</span>
-            <span>تسویه خودکار روزانه</span>
+            <span className="flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-emerald-500" />
+              <span>{t('footer.dailyAutoPayouts')}</span>
+            </span>
           </div>
         </div>
       </div>

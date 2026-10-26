@@ -9,42 +9,107 @@ import {
   Sparkles,
   ShieldCheck,
   Calendar,
-  Layers,
-  ArrowUpRight,
-  TrendingUp,
+  Globe,
+  Coins,
+  ArrowRight,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Card } from '../../../../components/ui/Card';
 import { Button } from '../../../../components/ui/Button';
 import { Badge } from '../../../../components/ui/Badge';
 import { UsdtPaymentModal } from '../../../../components/dashboard/UsdtPaymentModal';
-import { paymentService } from '../../../../lib/payment.service';
+import { paymentService, BioPayPlanSlug, BIOPAY_PLANS } from '../../../../lib/payment.service';
 
 export default function PlanBillingPage() {
-  const [currentPlan, setCurrentPlan] = useState<'STARTER' | 'PRO'>('PRO');
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly');
+  const [currentPlan, setCurrentPlan] = useState<BioPayPlanSlug>('pro');
+  const [region, setRegion] = useState<'iran' | 'international'>('iran');
   const [isUsdtModalOpen, setIsUsdtModalOpen] = useState(false);
-  const [selectedPlanForUsdt, setSelectedPlanForUsdt] = useState<'Starter' | 'Pro'>('Pro');
+  const [selectedPlanForUsdt, setSelectedPlanForUsdt] = useState<'Starter' | 'Pro' | 'Business'>('Pro');
   const [isProcessingZarinpal, setIsProcessingZarinpal] = useState(false);
 
-  const handlePayZarinpal = async (plan: 'Starter' | 'Pro') => {
+  const plans = [
+    {
+      slug: 'starter' as BioPayPlanSlug,
+      name: 'استارتر (Starter)',
+      duration: '۱ ماهه',
+      durationEn: '1 Month',
+      priceToman: 5_000_000,
+      oldPriceToman: 9_000_000,
+      priceUsdt: 27,
+      oldPriceUsdt: 45,
+      commissionPercent: '۱۰٪',
+      commissionDesc: '۵۰۰,۰۰۰ تومان / ۲.۷ تتر',
+      desc: 'مناسب پیج‌های نوپا و فروشگاه‌های در حال رشد اینستاگرامی',
+      features: [
+        'مدت اشتراک: ۱ ماه',
+        'تا ۵۰ محصول فعال در ویترین',
+        'درگاه پرداخت شاپرک شتابی + کریپتو TRC20',
+        'کارمزد ۲٪ روی تراکنش‌های مشتریان',
+        '۱۰٪ پورسانت ارجاع دوستان',
+      ],
+    },
+    {
+      slug: 'pro' as BioPayPlanSlug,
+      name: 'حرفه‌ای (Pro)',
+      duration: '۲ ماهه',
+      durationEn: '2 Months',
+      priceToman: 9_000_000,
+      oldPriceToman: 15_000_000,
+      priceUsdt: 52,
+      oldPriceUsdt: 80,
+      commissionPercent: '۱۵٪',
+      commissionDesc: '۱,۳۵۰,۰۰۰ تومان / ۷.۸ تتر',
+      desc: 'محبوب‌ترین انتخاب برای برندها و فروشگاه‌های دارای فروش مستمر',
+      features: [
+        'مدت اشتراک: ۲ ماه (پیشنهادی)',
+        'تا ۲۵۰ محصول فعال با دسته‌بندی دلخواه',
+        'حذف نشان تبلیغاتی "BioPay" از فوتر ویترین',
+        'کارمزد ویژه ۱.۵٪ روی تراکنش‌های مشتریان',
+        '۱۵٪ کمیسیون ارجاع نقدی برای همکاران',
+        'پشتیبانی VIP اختصاصی تلگرام',
+      ],
+    },
+    {
+      slug: 'business' as BioPayPlanSlug,
+      name: 'سازمانی (Business)',
+      duration: '۳ ماهه',
+      durationEn: '3 Months',
+      priceToman: 12_000_000,
+      oldPriceToman: 20_000_000,
+      priceUsdt: 75,
+      oldPriceUsdt: 110,
+      commissionPercent: '۲۰٪',
+      commissionDesc: '۲,۴۰۰,۰۰۰ تومان / ۱۵ تتر',
+      desc: 'حداکثر کارایی و بازدهی برای آنلاین‌شاپ‌های پرترافیک و شرکتی',
+      features: [
+        'مدت اشتراک: ۳ ماه (بیشترین صرفه اقتصادی)',
+        'محصولات نامحدود (تا ۱۰۰۰ عدد)',
+        'تا ۵ فروشگاه مجزا روی یک پنل',
+        'کمترین کارمزد تراکنش: فقط ۱.۰٪',
+        'بالاترین کمیسیون ارجاع: ۲۰٪ نقدی',
+        'اتصال به دامنه اختصاصی (Custom Domain)',
+        'مدیر حساب اختصاصی ۲۴ ساعته',
+      ],
+    },
+  ];
+
+  const handlePayZarinpal = async (planSlug: BioPayPlanSlug) => {
     setIsProcessingZarinpal(true);
-    const amountToman = plan === 'Starter'
-      ? (billingPeriod === 'monthly' ? 9000000 : 86400000)
-      : (billingPeriod === 'monthly' ? 12000000 : 115200000);
+    const planConfig = plans.find((p) => p.slug === planSlug);
+    const amountToman = planConfig?.priceToman || 5000000;
 
     try {
       const response = await paymentService.createPayment({
         amount: amountToman,
-        description: `خرید اشتراک ${plan} بایوپی`,
+        description: `خرید اشتراک ${planSlug} بایوپی`,
         callbackUrl: `${window.location.origin}/dashboard/plan?payment_status=success`,
         orderId: `SUB-${Date.now()}`,
       });
 
       if (response.success) {
         confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 } });
-        alert(`هدایت به درگاه پرداخت زرین‌پال با شناسه پیگیری: ${response.authority}\n(شبیه‌سازی محیط تست شتاب)`);
-        setCurrentPlan(plan === 'Starter' ? 'STARTER' : 'PRO');
+        alert(`هدایت به درگاه پرداخت زرین‌پال با شناسه پیگیری: ${response.authority}\n(شبیه‌سازی محیط تست شتابی)`);
+        setCurrentPlan(planSlug);
       }
     } catch (err: any) {
       alert(`خطا در اتصال به درگاه: ${err.message}`);
@@ -53,8 +118,9 @@ export default function PlanBillingPage() {
     }
   };
 
-  const handleOpenUsdt = (plan: 'Starter' | 'Pro') => {
-    setSelectedPlanForUsdt(plan);
+  const handleOpenUsdt = (planSlug: BioPayPlanSlug) => {
+    const capitalized = planSlug === 'starter' ? 'Starter' : planSlug === 'pro' ? 'Pro' : 'Business';
+    setSelectedPlanForUsdt(capitalized);
     setIsUsdtModalOpen(true);
   };
 
@@ -63,44 +129,42 @@ export default function PlanBillingPage() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="space-y-6 text-start max-w-5xl mx-auto"
+      className="space-y-6 text-start max-w-6xl mx-auto"
     >
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
             <CreditCard className="w-6 h-6 text-emerald-600" />
-            <span>طرح‌های اشتراک و تمدید حساب</span>
+            <span>پلن‌های اشتراک و تمدید فروشگاه</span>
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            پشتیبانی از پرداخت آنلاین شتابی زرین‌پال و ارز دیجیتال تتر (USDT TRC20)
+            ۳ پلن اشتراک با تخفیف ویژه، درگاه پرداخت شتابی شاپرک و ارز دیجیتال تتر (USDT TRC20)
           </p>
         </div>
 
-        {/* Monthly / Annual Toggle */}
-        <div className="flex items-center gap-2 bg-slate-200 dark:bg-slate-800 p-1 rounded-xl self-start sm:self-auto text-xs font-bold">
+        {/* Currency / Region Toggle */}
+        <div className="inline-flex items-center p-1 bg-slate-200 dark:bg-slate-800 rounded-xl text-xs font-bold gap-1 self-start sm:self-auto">
           <button
-            onClick={() => setBillingPeriod('monthly')}
-            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-              billingPeriod === 'monthly'
+            onClick={() => setRegion('iran')}
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              region === 'iran'
                 ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
                 : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            ماهانه
+            <span>🇮🇷 تومان</span>
           </button>
           <button
-            onClick={() => setBillingPeriod('annual')}
+            onClick={() => setRegion('international')}
             className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              billingPeriod === 'annual'
+              region === 'international'
                 ? 'bg-emerald-600 text-white shadow-xs'
                 : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <span>سالانه</span>
-            <span className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-1.5 py-0.5 rounded-md">
-              ۲۰٪ تخفیف
-            </span>
+            <Globe className="w-3.5 h-3.5" />
+            <span>🌐 USDT</span>
           </button>
         </div>
       </div>
@@ -114,154 +178,111 @@ export default function PlanBillingPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-sm font-extrabold text-slate-900 dark:text-white">
-                اشتراک فعال: پلن حرفه‌ای (Pro)
+                اشتراک فعال: پلن حرفه‌ای (Pro) — ۲ ماهه
               </span>
               <Badge variant="success">فعال</Badge>
             </div>
             <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
               <Calendar className="w-3.5 h-3.5" />
-              <span>تمدید خودکار بعدی: ۲۴ روز دیگر (۱۴۰۳/۰۹/۲۰)</span>
+              <span>مهلت تمدید بعدی: ۳۸ روز دیگر (۱۴۰۳/۱۰/۰۲)</span>
             </p>
           </div>
         </div>
         <div className="text-end">
           <div className="text-xs text-slate-500">کارمزد فروشگاهی</div>
-          <div className="text-lg font-black text-emerald-600">۱.۰٪ روی تراکنش‌ها</div>
+          <div className="text-lg font-black text-emerald-600">۱.۵٪ روی تراکنش‌ها</div>
         </div>
       </Card>
 
-      {/* Plans Comparison Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Starter Plan */}
-        <Card className={`p-6 space-y-6 relative ${currentPlan === 'STARTER' ? 'ring-2 ring-emerald-500' : ''}`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">پلن استارتر (Starter)</h3>
-              <p className="text-xs text-slate-500 mt-0.5">مناسب پیج‌های نوپا و فروشگاه‌های در حال رشد</p>
-            </div>
-            {currentPlan === 'STARTER' && <Badge variant="success">پلن فعلی</Badge>}
-          </div>
+      {/* 3 Plans Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {plans.map((plan) => {
+          const isCurrent = currentPlan === plan.slug;
 
-          <div className="space-y-1">
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-slate-900 dark:text-white font-mono">
-                {billingPeriod === 'monthly' ? '۹,۰۰۰,۰۰۰' : '۸۶,۴۰۰,۰۰۰'}
-              </span>
-              <span className="text-xs text-slate-500">تومان / {billingPeriod === 'monthly' ? 'ماهانه' : 'سالانه'}</span>
-            </div>
-            <div className="text-xs font-mono text-emerald-600 font-semibold">
-              معادل ۲۶ USDT (تتر TRC20)
-            </div>
-          </div>
-
-          <div className="space-y-2.5 text-xs text-slate-600 dark:text-slate-300">
-            <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>تا ۵۰ محصول فعال در ویترین</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>درگاه شتابی زرین‌پال + پرداخت تتری TRC20</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>کارمزد ۲٪ روی تراکنش‌های مشتریان</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>۱۰٪ کمیسیون ارجاع دوستان</span>
-            </div>
-          </div>
-
-          <div className="pt-2 flex flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => handlePayZarinpal('Starter')}
-              isLoading={isProcessingZarinpal}
+          return (
+            <Card
+              key={plan.slug}
+              className={`p-6 space-y-6 relative flex flex-col justify-between ${
+                isCurrent ? 'ring-2 ring-emerald-500 border-emerald-500 bg-emerald-500/5' : ''
+              }`}
             >
-              پرداخت با زرین‌پال
-            </Button>
-            <Button
-              variant="ghost"
-              className="flex-1 border border-slate-200 dark:border-slate-800"
-              onClick={() => handleOpenUsdt('Starter')}
-            >
-              پرداخت با تتر (USDT)
-            </Button>
-          </div>
-        </Card>
+              <div className="space-y-4">
+                {/* Header & Discount Badge */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                      {plan.name}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">{plan.desc}</p>
+                  </div>
+                  <span className="bg-rose-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-xs flex items-center gap-1 shrink-0">
+                    <Sparkles className="w-3 h-3" />
+                    تخفیف ویژه
+                  </span>
+                </div>
 
-        {/* Pro Plan */}
-        <Card className={`p-6 space-y-6 relative border-emerald-500/50 ${currentPlan === 'PRO' ? 'ring-2 ring-emerald-500 bg-emerald-500/5' : ''}`}>
-          <div className="absolute -top-3 end-6">
-            <span className="bg-emerald-600 text-white text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1">
-              <Sparkles className="w-3 h-3" />
-              پیشنهاد ویژه
-            </span>
-          </div>
+                {/* Price Display with Strikethrough & Region Detection */}
+                <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs line-through text-slate-400 font-mono font-bold">
+                      {region === 'iran'
+                        ? `${plan.oldPriceToman.toLocaleString('fa-IR')} تومان`
+                        : `${plan.oldPriceUsdt} USDT`}
+                    </span>
+                    <span className="text-[10px] bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 rounded font-black">
+                      OFF
+                    </span>
+                  </div>
 
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">پلن حرفه‌ای (Pro)</h3>
-              <p className="text-xs text-slate-500 mt-0.5">برای فروشگاه‌های حرفه‌ای با تیراژ فروش بالا</p>
-            </div>
-            {currentPlan === 'PRO' && <Badge variant="success">پلن فعال شما</Badge>}
-          </div>
+                  <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono flex items-baseline gap-1.5">
+                    <span>
+                      {region === 'iran'
+                        ? plan.priceToman.toLocaleString('fa-IR')
+                        : plan.priceUsdt}
+                    </span>
+                    <span className="text-xs font-semibold text-slate-500">
+                      {region === 'iran' ? `تومان (${plan.duration})` : `USDT (${plan.durationEn})`}
+                    </span>
+                  </div>
 
-          <div className="space-y-1">
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-slate-900 dark:text-white font-mono">
-                {billingPeriod === 'monthly' ? '۱۲,۰۰۰,۰۰۰' : '۱۱۵,۲۰۰,۰۰۰'}
-              </span>
-              <span className="text-xs text-slate-500">تومان / {billingPeriod === 'monthly' ? 'ماهانه' : 'سالانه'}</span>
-            </div>
-            <div className="text-xs font-mono text-emerald-600 font-semibold">
-              معادل ۵۳ USDT (تتر TRC20)
-            </div>
-          </div>
+                  <div className="text-[11px] text-amber-600 dark:text-amber-400 font-mono pt-1 border-t border-slate-200 dark:border-slate-700/60 flex justify-between">
+                    <span>کمیسیون معرف:</span>
+                    <span className="font-bold">{plan.commissionPercent} ({region === 'iran' ? plan.commissionDesc.split('/')[0].trim() : plan.commissionDesc.split('/')[1]?.trim() || ''})</span>
+                  </div>
+                </div>
 
-          <div className="space-y-2.5 text-xs text-slate-600 dark:text-slate-300">
-            <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span className="font-bold text-slate-900 dark:text-white">محصولات نامحدود (تا ۵۰۰ محصول)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>حذف کامل لوگو و برندینگ "BioPay"</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span className="font-bold text-emerald-600">کارمزد فوق‌العاده ۱٪ روی تراکنش‌ها</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span className="font-bold text-emerald-600">۱۵٪ کمیسیون ارجاع برای همکاران</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>پشتیبانی VIP اختصاصی ۲۴/۷ تلگرام</span>
-            </div>
-          </div>
+                {/* Features */}
+                <div className="space-y-2 text-xs text-slate-600 dark:text-slate-300">
+                  {plan.features.map((feat, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{feat}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-          <div className="pt-2 flex flex-col sm:flex-row gap-2">
-            <Button
-              variant="primary"
-              className="flex-1"
-              onClick={() => handlePayZarinpal('Pro')}
-              isLoading={isProcessingZarinpal}
-            >
-              تمدید با زرین‌پال
-            </Button>
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => handleOpenUsdt('Pro')}
-            >
-              پرداخت با تتر (USDT)
-            </Button>
-          </div>
-        </Card>
+              {/* Action Buttons */}
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                <Button
+                  variant={isCurrent ? 'primary' : 'outline'}
+                  className="w-full text-xs"
+                  onClick={() => handlePayZarinpal(plan.slug)}
+                  isLoading={isProcessingZarinpal}
+                >
+                  پرداخت با شتاب (زرین‌پال)
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full text-xs border border-slate-200 dark:border-slate-800"
+                  onClick={() => handleOpenUsdt(plan.slug)}
+                >
+                  پرداخت با تتر (USDT TRC20)
+                </Button>
+              </div>
+            </Card>
+          );
+        })}
       </div>
 
       {/* USDT Payment Modal */}
@@ -271,9 +292,10 @@ export default function PlanBillingPage() {
         planName={selectedPlanForUsdt}
         onPlanActivated={(planName, txHash) => {
           confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-          setCurrentPlan(selectedPlanForUsdt === 'Starter' ? 'STARTER' : 'PRO');
+          const slug = selectedPlanForUsdt.toLowerCase() as BioPayPlanSlug;
+          setCurrentPlan(slug);
           setIsUsdtModalOpen(false);
-          alert(`پرداخت تتری تایید شد! (هش تراکنش: ${txHash})\nاشتراک ${planName} شما با موفقیت فعال گردید.`);
+          alert(`پرداخت تتری با موفقیت تایید شد! (هش: ${txHash})\nاشتراک ${planName} فعال گردید.`);
         }}
       />
     </motion.div>

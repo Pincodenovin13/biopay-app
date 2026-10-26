@@ -34,7 +34,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         whileTap={!disabled && !isLoading ? { scale: 0.98 } : undefined}
         disabled={disabled || isLoading}
         className={`${baseStyles} ${sizeStyles} ${variantStyles} ${className}`}
-        {...(props as HTMLMotionProps<'button'>)}
+        {...(props as unknown as HTMLMotionProps<'button'>)}
       >
         {isLoading ? (
           <svg className="animate-spin h-4 w-4 text-current" viewBox="0 0 24 24" fill="none">

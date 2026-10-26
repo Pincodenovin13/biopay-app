@@ -14,9 +14,11 @@ enum Role {
 }
 
 enum UserStatus {
+  PENDING_VERIFICATION
+  VERIFIED
+  REJECTED
   ACTIVE
   SUSPENDED
-  PENDING_VERIFICATION
 }
 
 enum Currency {
@@ -59,32 +61,44 @@ enum ReferralStatus {
 }
 
 model User {
-  id                   String       @id @default(cuid())
-  phone                String?      @unique
-  email                String?      @unique
-  name                 String?
-  role                 Role         @default(USER)
-  status               UserStatus   @default(ACTIVE)
-  lastLoginAt          DateTime?
+  id                      String       @id @default(cuid())
+  email                   String       @unique
+  passwordHash            String
+  phone                   String?      @unique
+  name                    String?
+  fullName                String?
+  status                  UserStatus   @default(PENDING_VERIFICATION)
+  verificationToken       String?      @unique
+  verificationTokenExpiry DateTime?
+  resetPasswordToken      String?      @unique
+  resetPasswordExpiry     DateTime?
+  telegramId              String?      @unique
+  telegramChatId          String?      @unique
+  instagramId             String?
+  country                 String?
+  city                    String?
+  role                    Role         @default(USER)
+  lastLoginAt             DateTime?
   inactivityWarningSentAt DateTime?
-  telegramChatId       String?      @unique
-  referralCode         String       @unique
-  referredById         String?
-  referredBy           User?        @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
-  referralsMade        User[]       @relation("UserReferrals")
-  instagramProofUrl    String?
-  isReferrerVerified   Boolean      @default(false)
-  referrerRenewalDueAt DateTime?
-  stores               Store[]
-  withdrawals          Withdrawal[]
-  referralEarnings     Referral[]   @relation("ReferralRewards")
-  auditLogs            AuditLog[]
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
+  referralCode            String       @unique
+  referredById            String?
+  referredBy              User?        @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referralsMade           User[]       @relation("UserReferrals")
+  instagramProofUrl       String?
+  isReferrerVerified      Boolean      @default(false)
+  referrerRenewalDueAt    DateTime?
+  stores                  Store[]
+  withdrawals             Withdrawal[]
+  referralEarnings        Referral[]   @relation("ReferralRewards")
+  auditLogs               AuditLog[]
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
 
   @@index([phone])
   @@index([email])
   @@index([referralCode])
+  @@index([verificationToken])
+  @@index([telegramId])
 }
 
 model Store {

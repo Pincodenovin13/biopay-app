@@ -23,7 +23,9 @@ import { AdminConsoleView } from './components/admin/AdminConsoleView';
 import RegisterPage from './app/(auth)/register/page';
 import LoginPage from './app/(auth)/login/page';
 import AdminLoginPage from './app/(auth)/admin-login/page';
-import { Store, Shield, Gift, LayoutDashboard, UserCheck } from 'lucide-react';
+import ForgotPasswordPage from './app/(auth)/forgot-password/page';
+import ResetPasswordPage from './app/(auth)/reset-password/page';
+import { Store, Shield, Gift, LayoutDashboard, UserCheck, KeyRound } from 'lucide-react';
 
 export type AppRoute =
   | 'landing'
@@ -33,7 +35,9 @@ export type AppRoute =
   | 'admin'
   | 'register'
   | 'login'
-  | 'admin-login';
+  | 'admin-login'
+  | 'forgot-password'
+  | 'reset-password';
 
 function BioPayRouter() {
   const { t, direction } = useI18n();
@@ -54,6 +58,10 @@ function BioPayRouter() {
       setCurrentRoute('register');
     } else if (path.startsWith('/login')) {
       setCurrentRoute('login');
+    } else if (path.startsWith('/forgot-password')) {
+      setCurrentRoute('forgot-password');
+    } else if (path.startsWith('/reset-password')) {
+      setCurrentRoute('reset-password');
     } else if (path.startsWith('/s/')) {
       setCurrentRoute('storefront');
     }
@@ -73,6 +81,8 @@ function BioPayRouter() {
       else if (route === 'register') targetPath = '/register';
       else if (route === 'login') targetPath = '/login';
       else if (route === 'admin-login') targetPath = '/admin/login';
+      else if (route === 'forgot-password') targetPath = '/forgot-password';
+      else if (route === 'reset-password') targetPath = '/reset-password';
 
       window.history.pushState({}, '', targetPath);
     }
@@ -152,6 +162,26 @@ function BioPayRouter() {
     return (
       <div className="relative">
         <AdminLoginPage />
+        <RouteTesterBar currentRoute={currentRoute} onNavigate={navigateTo} />
+      </div>
+    );
+  }
+
+  // ROUTE 8: FORGOT PASSWORD (/forgot-password)
+  if (currentRoute === 'forgot-password') {
+    return (
+      <div className="relative">
+        <ForgotPasswordPage />
+        <RouteTesterBar currentRoute={currentRoute} onNavigate={navigateTo} />
+      </div>
+    );
+  }
+
+  // ROUTE 9: RESET PASSWORD (/reset-password)
+  if (currentRoute === 'reset-password') {
+    return (
+      <div className="relative">
+        <ResetPasswordPage />
         <RouteTesterBar currentRoute={currentRoute} onNavigate={navigateTo} />
       </div>
     );
@@ -279,6 +309,23 @@ function RouteTesterBar({
       <span className="text-[10px] text-slate-400 font-mono pe-1 hidden sm:inline whitespace-nowrap">
         {t('common.routes')}
       </span>
+      <button
+        onClick={() => onNavigate('register')}
+        className={`px-2.5 py-1 rounded-full transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+          currentRoute === 'register' ? 'bg-sky-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
+        }`}
+      >
+        <UserCheck className="w-3 h-3" />
+        <span>ثبت‌نام (Register)</span>
+      </button>
+      <button
+        onClick={() => onNavigate('login')}
+        className={`px-2.5 py-1 rounded-full transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+          currentRoute === 'login' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
+        }`}
+      >
+        <span>ورود (Login)</span>
+      </button>
       <button
         onClick={() => onNavigate('landing')}
         className={`px-2.5 py-1 rounded-full transition-all cursor-pointer whitespace-nowrap ${

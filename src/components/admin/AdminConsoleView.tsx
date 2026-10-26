@@ -26,6 +26,7 @@ import { Badge } from '../ui/Badge';
 import { LanguageDropdown } from '../ui/LanguageDropdown';
 import { telegramBot } from '../../lib/telegram';
 import { runInactiveAccountCleanup } from '../../lib/accountCleanup.service';
+import { kavenegarService } from '../../lib/kavenegar';
 
 interface AdminConsoleViewProps {
   onExitAdmin: () => void;
@@ -126,6 +127,13 @@ export function AdminConsoleView({ onExitAdmin }: AdminConsoleViewProps) {
       bankName: 'بانک ملت',
       trackingNumber: tracking,
       payoutDate: new Date().toLocaleDateString(locale === 'fa' ? 'fa-IR' : 'en-US'),
+    });
+    // Kavenegar notification strictly for operational notifications to real Iranian phones (PART 9)
+    await kavenegarService.notifyPayoutApproved({
+      phone: '09121112233',
+      amountToman: amount,
+      shebaMasked: 'IR82...7890',
+      payaTrackingNumber: tracking,
     });
     showToast(`تسویه انجام شد و اطلاعیه در کانال منتشر گردید (${tracking})`);
   };

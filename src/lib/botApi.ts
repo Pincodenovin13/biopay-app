@@ -11,6 +11,12 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
+import {
+  verifyUserToken,
+  saveUserDocuments,
+  approveUserVerification,
+  rejectUserVerification,
+} from './userStore';
 
 export interface AuditLogItem {
   id: string;
@@ -322,6 +328,206 @@ botRouter.post('/notify', (req: Request, res: Response): void => {
     });
   } catch (error: any) {
     logAudit(req, 'BOT_NOTIFY_INTERNAL_ERROR', { error: error.message });
+    res.status(500).json({
+      ok: false,
+      error: 'Internal Server Error',
+    });
+  }
+});
+
+/**
+ * 7.1 POST /api/bot/verify-token
+ * Request: { "token": "uuid", "telegramId": "123456" }
+ * Response: { "ok": true, "userId": "..." }
+ */
+botRouter.post('/verify-token', (req: Request, res: Response): void => {
+  try {
+    const { token, telegramId } = req.body;
+
+    if (!token) {
+      logAudit(req, 'BOT_VERIFY_TOKEN_MISSING_TOKEN', { body: req.body });
+      res.status(400).json({
+        ok: false,
+        error: 'Bad Request: Missing token parameter',
+      });
+      return;
+    }
+
+    const result = verifyUserToken(String(token), telegramId ? String(telegramId) : undefined);
+
+    if (!result.ok || !result.user) {
+      logAudit(req, 'BOT_VERIFY_TOKEN_INVALID', { token, telegramId });
+      res.status(404).json({
+        ok: false,
+        error: result.error || 'Token not found or expired (tokens expire after 24 hours)',
+      });
+      return;
+    }
+
+    logAudit(req, 'BOT_VERIFY_TOKEN_SUCCESS', {
+      userId: result.user.id,
+      email: result.user.email,
+      telegramId,
+    }, result.user.id, telegramId ? String(telegramId) : undefined);
+
+    res.status(200).json({
+      ok: true,
+      userId: result.user.id,
+      status: result.user.status,
+      email: result.user.email,
+    });
+  } catch (error: any) {
+    logAudit(req, 'BOT_VERIFY_TOKEN_ERROR', { error: error.message });
+    res.status(500).json({
+      ok: false,
+      error: 'Internal Server Error',
+    });
+  }
+});
+
+/**
+ * 7.2 POST /api/bot/save-documents
+ * Request: { "userId": "...", "instagramId": "...", "fullName": "...", "country": "...", "city": "..." }
+ * Response: { "ok": true }
+ */
+botRouter.post('/save-documents', (req: Request, res: Response): void => {
+  try {
+    const { userId, instagramId, fullName, country, city } = req.body;
+
+    if (!userId || !instagramId || !fullName || !country || !city) {
+      logAudit(req, 'BOT_SAVE_DOCS_MISSING_FIELDS', { body: req.body });
+      res.status(400).json({
+        ok: false,
+        error: 'Bad Request: Missing required text fields (userId, instagramId, fullName, country, city)',
+      });
+      return;
+    }
+
+    const result = saveUserDocuments({
+      userId: String(userId),
+      instagramId: String(instagramId),
+      fullName: String(fullName),
+      country: String(country),
+      city: String(city),
+    });
+
+    if (!result.ok || !result.user) {
+      logAudit(req, 'BOT_SAVE_DOCS_FAILED', { userId });
+      res.status(404).json({
+        ok: false,
+        error: result.error || 'User not found',
+      });
+      return;
+    }
+
+    logAudit(req, 'BOT_SAVE_DOCS_SUCCESS', {
+      userId,
+      instagramId,
+      fullName,
+      country,
+      city,
+    }, userId);
+
+    res.status(200).json({
+      ok: true,
+    });
+  } catch (error: any) {
+    logAudit(req, 'BOT_SAVE_DOCS_ERROR', { error: error.message });
+    res.status(500).json({
+      ok: false,
+      error: 'Internal Server Error',
+    });
+  }
+});
+
+/**
+ * 7.3 POST /api/bot/approve
+ * Request: { "userId": "..." }
+ * Response: { "ok": true, "referralLink": "...", "storeLink": "..." }
+ */
+botRouter.post('/approve', (req: Request, res: Response): void => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      res.status(400).json({
+        ok: false,
+        error: 'Bad Request: Missing userId parameter',
+      });
+      return;
+    }
+
+    const result = approveUserVerification(String(userId));
+
+    if (!result.ok || !result.user) {
+      logAudit(req, 'BOT_APPROVE_FAILED', { userId });
+      res.status(404).json({
+        ok: false,
+        error: result.error || 'User not found',
+      });
+      return;
+    }
+
+    logAudit(req, 'BOT_APPROVE_SUCCESS', {
+      userId,
+      status: result.user.status,
+      referralLink: result.referralLink,
+      storeLink: result.storeLink,
+    }, userId);
+
+    res.status(200).json({
+      ok: true,
+      referralLink: result.referralLink,
+      storeLink: result.storeLink,
+    });
+  } catch (error: any) {
+    logAudit(req, 'BOT_APPROVE_ERROR', { error: error.message });
+    res.status(500).json({
+      ok: false,
+      error: 'Internal Server Error',
+    });
+  }
+});
+
+/**
+ * 7.4 POST /api/bot/reject
+ * Request: { "userId": "...", "reason": "..." }
+ * Response: { "ok": true }
+ */
+botRouter.post('/reject', (req: Request, res: Response): void => {
+  try {
+    const { userId, reason } = req.body;
+
+    if (!userId) {
+      res.status(400).json({
+        ok: false,
+        error: 'Bad Request: Missing userId parameter',
+      });
+      return;
+    }
+
+    const result = rejectUserVerification(String(userId), reason ? String(reason) : undefined);
+
+    if (!result.ok || !result.user) {
+      logAudit(req, 'BOT_REJECT_FAILED', { userId });
+      res.status(404).json({
+        ok: false,
+        error: result.error || 'User not found',
+      });
+      return;
+    }
+
+    logAudit(req, 'BOT_REJECT_SUCCESS', {
+      userId,
+      reason,
+      status: result.user.status,
+    }, userId);
+
+    res.status(200).json({
+      ok: true,
+    });
+  } catch (error: any) {
+    logAudit(req, 'BOT_REJECT_ERROR', { error: error.message });
     res.status(500).json({
       ok: false,
       error: 'Internal Server Error',

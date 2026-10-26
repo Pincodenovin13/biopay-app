@@ -8,7 +8,14 @@ export interface AuthSession {
   phone?: string;
   email?: string;
   role: 'USER' | 'ADMIN' | 'SUPPORT';
+  roleChoice?: 'seller' | 'referrer' | 'admin';
+  status?: 'PENDING_VERIFICATION' | 'VERIFIED' | 'REJECTED' | 'ACTIVE';
+  verificationToken?: string;
+  referralCode?: string;
+  referralLink?: string;
   storeSlug?: string;
+  fullName?: string;
+  country?: string;
   expiresAt: number;
 }
 
@@ -131,14 +138,28 @@ export function createSession(params: {
   phone?: string;
   email?: string;
   role?: 'USER' | 'ADMIN' | 'SUPPORT';
+  roleChoice?: 'seller' | 'referrer' | 'admin';
+  status?: 'PENDING_VERIFICATION' | 'VERIFIED' | 'REJECTED' | 'ACTIVE';
+  verificationToken?: string;
+  referralCode?: string;
+  referralLink?: string;
   storeSlug?: string;
+  fullName?: string;
+  country?: string;
 }): AuthSession {
   return {
     userId: params.userId,
     phone: params.phone,
     email: params.email,
     role: params.role || 'USER',
+    roleChoice: params.roleChoice || 'seller',
+    status: params.status || 'VERIFIED',
+    verificationToken: params.verificationToken,
+    referralCode: params.referralCode,
+    referralLink: params.referralLink,
     storeSlug: params.storeSlug || 'tehran-boutique',
+    fullName: params.fullName,
+    country: params.country,
     expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
   };
 }

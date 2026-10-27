@@ -1,13 +1,14 @@
-import { generateOtp, verifyOtp, isAccountLocked, lockAccount } from '../src/lib/auth';
+import { test, expect } from '@playwright/test';
+import { generateOtp, verifyOtp, isAccountLocked } from '../src/lib/auth.server';
 
-describe('BioPay Auth Security & Lockout Tests', () => {
+test.describe('BioPay Auth Security & Lockout Tests', () => {
   const originalEnv = process.env.NODE_ENV;
 
-  afterEach(() => {
+  test.afterEach(() => {
     process.env.NODE_ENV = originalEnv;
   });
 
-  it('Production never accepts 123456 backdoor code', async () => {
+  test('Production never accepts 123456 backdoor code', async () => {
     process.env.NODE_ENV = 'production';
     const testIdentifier = 'user_prod_test@biopay.app';
 
@@ -24,22 +25,22 @@ describe('BioPay Auth Security & Lockout Tests', () => {
     }
   });
 
-  it('OTP code expires after 3 minutes', async () => {
+  test('OTP code expires after 3 minutes', async () => {
     const testIdentifier = 'expire_test@biopay.app';
     const { code, expiresAt } = await generateOtp(testIdentifier);
 
+    expect(code).toBeDefined();
     // Validity must be exactly 3 minutes (180,000ms)
     const validityMs = expiresAt - Date.now();
     expect(validityMs).toBeGreaterThan(170000);
     expect(validityMs).toBeLessThanOrEqual(180500);
 
-    // Fast-forward or simulate expiry
+    // Past time check
     const pastTime = Date.now() - 1000;
-    // Calling with expired time
     expect(pastTime < expiresAt).toBe(true);
   });
 
-  it('Account locks out for 15 minutes after 5 failed attempts', async () => {
+  test('Account locks out for 15 minutes after 5 failed attempts', async () => {
     const testIdentifier = 'lockout_test@biopay.app';
     await generateOtp(testIdentifier);
 

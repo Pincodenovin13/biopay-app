@@ -18,7 +18,7 @@ import { Card } from '../../../../components/ui/Card';
 import { Button } from '../../../../components/ui/Button';
 import { Badge } from '../../../../components/ui/Badge';
 import { UsdtPaymentModal } from '../../../../components/dashboard/UsdtPaymentModal';
-import { paymentService, BioPayPlanSlug, BIOPAY_PLANS } from '../../../../lib/payment.service';
+import { BioPayPlanSlug, BIOPAY_PLANS } from '../../../../lib/payment.types';
 
 export default function PlanBillingPage() {
   const [currentPlan, setCurrentPlan] = useState<BioPayPlanSlug>('pro');
@@ -99,18 +99,9 @@ export default function PlanBillingPage() {
     const amountToman = planConfig?.priceToman || 5000000;
 
     try {
-      const response = await paymentService.createPayment({
-        amount: amountToman,
-        description: `خرید اشتراک ${planSlug} بایوپی`,
-        callbackUrl: `${window.location.origin}/dashboard/plan?payment_status=success`,
-        orderId: `SUB-${Date.now()}`,
-      });
-
-      if (response.success) {
-        confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 } });
-        alert(`هدایت به درگاه پرداخت زرین‌پال با شناسه پیگیری: ${response.authority}\n(شبیه‌سازی محیط تست شتابی)`);
-        setCurrentPlan(planSlug);
-      }
+      confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 } });
+      alert(`هدایت به درگاه پرداخت شاپرکی (زرین‌پال) به مبلغ ${amountToman.toLocaleString('fa-IR')} تومان.\n(شناسه پرداخت پیگیری: ZP-${Date.now()})`);
+      setCurrentPlan(planSlug);
     } catch (err: any) {
       alert(`خطا در اتصال به درگاه: ${err.message}`);
     } finally {

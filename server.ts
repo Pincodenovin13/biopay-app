@@ -6,6 +6,7 @@ import { botRouter } from './src/lib/botApi';
 import { recordPageView } from './src/lib/analytics.service';
 import { getStoreAnalytics, recordStoreVisit } from './src/lib/store-analytics.service';
 import { BIOPAY_CONFIG } from './src/lib/config';
+import { initServerCleanupCron } from './src/lib/accountCleanup.server';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,6 +14,9 @@ const __dirname = path.dirname(__filename);
 async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
+
+  // Initialize background tasks
+  initServerCleanupCron();
 
   // JSON Body parsing
   app.use(express.json());

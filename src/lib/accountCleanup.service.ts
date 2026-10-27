@@ -80,31 +80,9 @@ const mockInactiveUsers: InactiveAccountRecord[] = [
 ];
 
 export class AccountCleanupService {
-  private cronJob: CronScheduledTask | null = null;
   private memoryRecords: InactiveAccountRecord[] = [...mockInactiveUsers];
 
-  constructor() {
-    this.initCronJob();
-  }
-
-  /**
-   * Initialize daily scheduled cron (Runs daily at midnight 00:00)
-   */
-  public async initCronJob(): Promise<void> {
-    if (typeof window === 'undefined') {
-      try {
-        const cron = await import('node-cron');
-        // Daily at midnight
-        this.cronJob = cron.default.schedule('0 0 * * *', async () => {
-          console.log('[AccountCleanupCron] Running daily inactive account scan...');
-          await this.triggerAccountCleanup();
-        });
-        console.log('[AccountCleanupCron] Daily cron scheduled at 00:00.');
-      } catch (err) {
-        console.warn('[AccountCleanupCron] Node-cron not initialized:', err);
-      }
-    }
-  }
+  constructor() {}
 
   /**
    * Retrieve list of currently inactive accounts (inactivity >= 7 days)

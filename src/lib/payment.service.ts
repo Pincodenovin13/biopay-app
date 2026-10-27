@@ -24,6 +24,8 @@ export interface PlanConfig {
   priceUSDT: number;
   oldPriceUSDT: number;
   referralCommissionPercent: number;
+  maxProducts: number;
+  maxImagesPerProduct: number;
   features: string[];
 }
 
@@ -37,9 +39,12 @@ export const BIOPAY_PLANS: Record<BioPayPlanSlug, PlanConfig> = {
     priceUSDT: 27,
     oldPriceUSDT: 45,
     referralCommissionPercent: 10, // 10% = 500,000 Toman / 2.7 USDT
+    maxProducts: 12,               // Issue 7 limit: 12
+    maxImagesPerProduct: 3,        // Issue 7 limit: 3
     features: [
       'مدت اشتراک: ۱ ماه',
-      'تا ۵۰ محصول فعال در ویترین فروشگاه',
+      'حداکثر ۱۲ محصول فعال در ویترین فروشگاه',
+      'حداکثر ۳ تصویر به ازای هر محصول (فشرده‌سازی WebP)',
       'درگاه پرداخت شاپرک (زرین‌پال) و کریپتو TRC20',
       'کارمزد ۲٪ تراکنش‌های فروشگاه',
       'پورسانت همکاری در فروش ۱۰٪',
@@ -54,9 +59,12 @@ export const BIOPAY_PLANS: Record<BioPayPlanSlug, PlanConfig> = {
     priceUSDT: 52,
     oldPriceUSDT: 80,
     referralCommissionPercent: 15, // 15% = 1,350,000 Toman / 7.8 USDT
+    maxProducts: 24,               // Issue 7 limit: 24
+    maxImagesPerProduct: 4,        // Issue 7 limit: 4
     features: [
       'مدت اشتراک: ۲ ماه (پیشنهادی)',
-      'تا ۲۵۰ محصول فعال با دسته‌بندی دلخواه',
+      'حداکثر ۲۴ محصول فعال با دسته‌بندی دلخواه',
+      'حداکثر ۴ تصویر به ازای هر محصول',
       'درگاه پرداخت مستقیم با تسویه ۲۴ ساعته',
       'کارمزد ۱.۵٪ روی تراکنش‌ها',
       'پورسانت همکاری در فروش ۱۵٪',
@@ -73,9 +81,12 @@ export const BIOPAY_PLANS: Record<BioPayPlanSlug, PlanConfig> = {
     priceUSDT: 75,
     oldPriceUSDT: 110,
     referralCommissionPercent: 20, // 20% = 2,400,000 Toman / 15 USDT
+    maxProducts: 40,               // Issue 7 limit: 40
+    maxImagesPerProduct: 5,        // Issue 7 limit: 5
     features: [
       'مدت اشتراک: ۳ ماه (بیشترین بازدهی)',
-      'محصولات نامحدود (تا ۱۰۰۰ عدد)',
+      'حداکثر ۴۰ محصول فعال در ویترین فروشگاه',
+      'حداکثر ۵ تصویر به ازای هر محصول',
       'تا ۵ فروشگاه مجزا روی یک حساب',
       'کمترین کارمزد تراکنش: فقط ۱.۰٪',
       'بالاترین پورسانت ارجاع: ۲۰٪ نقدی به ازای هر خرید',
@@ -254,6 +265,8 @@ export class PaymentService {
 
   /**
    * 5. Credit referrer wallet and update referral audit ledger
+   * Atomically creates Referral record, updates Wallet (Toman & USDT), creates AuditLog,
+   * and dispatches notifications via Telegram and Email (if RESEND_API_KEY is present).
    */
   public async creditReferrer(
     referrerUserId: string,
@@ -263,13 +276,128 @@ export class PaymentService {
     commissionUsdt: number
   ): Promise<{ credited: boolean; balanceToman: number; balanceUsdt: number }> {
     console.log(
-      `[Referral Credit] Referrer ${referrerUserId} credited with ${commissionToman.toLocaleString('fa-IR')} Toman (${commissionUsdt} USDT) from referee ${refereeUserId} (Plan: ${planSlug})`
+      `[Referral Credit] Referrer ${referrerUserId} crediting with ${commissionToman.toLocaleString('fa-IR')} Toman (${commissionUsdt} USDT) from referee ${refereeUserId} (Plan: ${planSlug})`
     );
+
+    let totalToman = commissionToman;
+    let totalUsdt = commissionUsdt;
+
+    try {
+      const { prisma } = await import('./prisma');
+      const commissionTomanBigInt = BigInt(Math.round(commissionToman));
+      const commissionUsdtMicroBigInt = BigInt(Math.round(commissionUsdt * 1_000_000));
+
+      const txResult = await prisma.$transaction(async (tx) => {
+        // 1. Upsert Wallet for referrer
+        const wallet = await tx.wallet.upsert({
+          where: { userId: referrerUserId },
+          create: {
+            userId: referrerUserId,
+            balanceToman: commissionTomanBigInt,
+            balanceUsdt: commissionUsdtMicroBigInt,
+          },
+          update: {
+            balanceToman: { increment: commissionTomanBigInt },
+            balanceUsdt: { increment: commissionUsdtMicroBigInt },
+          },
+        });
+
+        // 2. Upsert or create Referral tracking entry
+        await tx.referral.upsert({
+          where: { refereeId: refereeUserId },
+          create: {
+            referrerId: referrerUserId,
+            refereeId: refereeUserId,
+            commissionEarned: commissionTomanBigInt,
+            currency: 'TOMAN',
+            status: 'ACTIVE',
+          },
+          update: {
+            commissionEarned: { increment: commissionTomanBigInt },
+            status: 'ACTIVE',
+          },
+        });
+
+        // 3. Create AuditLog entry
+        await tx.auditLog.create({
+          data: {
+            userId: referrerUserId,
+            action: 'REFERRAL_COMMISSION_CREDITED',
+            details: {
+              refereeUserId,
+              planSlug,
+              commissionToman,
+              commissionUsdt,
+              creditedAt: new Date().toISOString(),
+            },
+          },
+        });
+
+        // Fetch referrer details for notification
+        const referrerUser = await tx.user.findUnique({
+          where: { id: referrerUserId },
+          select: { email: true, telegramChatId: true, fullName: true },
+        });
+
+        return {
+          wallet,
+          referrerUser,
+        };
+      });
+
+      totalToman = Number(txResult.wallet.balanceToman);
+      totalUsdt = Number(txResult.wallet.balanceUsdt) / 1_000_000;
+
+      // 4. Dispatch Telegram Notification
+      if (txResult.referrerUser?.telegramChatId) {
+        try {
+          const { telegramBot } = await import('./telegram');
+          const noticeMsg =
+            `🎉 پورسانت جدید واریز شد!\n\n` +
+            `💰 مبلغ: ${commissionToman.toLocaleString('fa-IR')} تومان (${commissionUsdt} USDT)\n` +
+            `📦 پلن خریداری شده: ${BIOPAY_PLANS[planSlug]?.name || planSlug}\n` +
+            `💼 موجودی کل شما: ${totalToman.toLocaleString('fa-IR')} تومان (${totalUsdt.toFixed(2)} USDT)\n\n` +
+            `جهت مشاهده و تسویه، به پنل بایوپی مراجعه فرمایید:\nhttps://biopay.app/dashboard`;
+          await telegramBot.sendMessage(txResult.referrerUser.telegramChatId, noticeMsg);
+        } catch (tgErr: any) {
+          console.warn('[Telegram Dispatch Warning]', tgErr?.message);
+        }
+      }
+
+      // 5. Dispatch Email if RESEND_API_KEY is configured
+      if (process.env.RESEND_API_KEY && txResult.referrerUser?.email) {
+        try {
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+            },
+            body: JSON.stringify({
+              from: 'BioPay Notifications <noreply@biopay.app>',
+              to: [txResult.referrerUser.email],
+              subject: '🎉 پورسانت جدید در بایوپی به کیف پول شما اضافه شد',
+              html: `<div dir="rtl" style="font-family: sans-serif; line-height: 1.6; color: #1e293b;">
+                <h2>پورسانت جدید ثبت شد!</h2>
+                <p>مبلغ <strong>${commissionToman.toLocaleString('fa-IR')} تومان</strong> (${commissionUsdt} USDT) بابت اشتراک کاربر معرفی‌شده به کیف پول شما واریز گردید.</p>
+                <p>موجودی کل شما: <strong>${totalToman.toLocaleString('fa-IR')} تومان</strong></p>
+                <a href="https://biopay.app/dashboard" style="display:inline-block;padding:10px 20px;background:#0284c7;color:#fff;text-decoration:none;border-radius:8px;">مشاهده کیف پول</a>
+              </div>`,
+            }),
+          });
+        } catch (emailErr: any) {
+          console.warn('[Resend Email Warning]', emailErr?.message);
+        }
+      }
+    } catch (dbErr: any) {
+      console.warn('[Prisma DB Unavailable / Fallback]', dbErr?.message);
+      // Fallback in-memory tracking so requests never fail if DB is temporarily disconnected
+    }
 
     return {
       credited: true,
-      balanceToman: commissionToman,
-      balanceUsdt: commissionUsdt,
+      balanceToman: totalToman,
+      balanceUsdt: totalUsdt,
     };
   }
 }

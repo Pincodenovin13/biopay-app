@@ -35,6 +35,7 @@ import { ReferralView } from './ReferralView';
 import { WithdrawalsView } from './WithdrawalsView';
 import { NotificationDropdown } from './NotificationDropdown';
 import { UsdtPaymentModal } from './UsdtPaymentModal';
+import { SellerAnalyticsView } from './SellerAnalyticsView';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
@@ -399,6 +400,18 @@ export function SellerDashboardView({ onViewStorefront, onLogout }: SellerDashbo
 
               {/* Recent Orders Section */}
               <RecentOrdersTable />
+            </motion.div>
+          )}
+
+          {/* TAB 1.5: ANALYTICS & VISITOR TRACKING */}
+          {activeTab === 'analytics' && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="max-w-full"
+            >
+              <SellerAnalyticsView storeSlug={storeInfo.slug || 'tehrano_boutique'} />
             </motion.div>
           )}
 

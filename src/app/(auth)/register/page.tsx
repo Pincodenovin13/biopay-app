@@ -12,22 +12,22 @@ import {
   Lock,
   Mail,
   Globe,
-  ChevronRight,
   ArrowRight,
   Sparkles,
   AlertTriangle,
   Bot,
-  UserCheck,
-  Building,
+  Check,
 } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { useI18n } from '../../../lib/i18n';
 import { LanguageDropdown } from '../../../components/ui/LanguageDropdown';
-import { registerNewUser, StoredUser, usersMap } from '../../../lib/userStore';
+import { registerNewUser, StoredUser } from '../../../lib/userStore';
 import { telegramBot } from '../../../lib/telegram';
 import { setClientSession, createSession } from '../../../lib/auth';
+import { IndustryPicker } from '../../../components/registration/IndustryPicker';
+import { BIOPAY_CONFIG } from '../../../lib/config';
 
 export type UserRoleChoice = 'seller' | 'referrer' | 'admin';
 
@@ -45,15 +45,17 @@ const COUNTRIES = [
 export default function RegisterPage() {
   const { t, locale } = useI18n();
 
-  // Multi-step state: 'role' -> 'form' -> 'verification'
-  const [step, setStep] = useState<'role' | 'form' | 'verification'>('role');
+  // Multi-step flow: 'role' -> 'industry' (if seller) -> 'form' -> 'verification'
+  const [step, setStep] = useState<'role' | 'industry' | 'form' | 'verification'>('role');
   const [selectedRole, setSelectedRole] = useState<UserRoleChoice>('seller');
+  const [selectedIndustry, setSelectedIndustry] = useState<string>('clothing');
 
   // Form Fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [country, setCountry] = useState(locale === 'fa' ? 'ایران' : 'Iran');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   // Status & Token
   const [loading, setLoading] = useState(false);
@@ -87,12 +89,32 @@ export default function RegisterPage() {
       return;
     }
     setSelectedRole(role);
-    setStep('form');
+    if (role === 'seller') {
+      setStep('industry');
+    } else {
+      setStep('form');
+    }
   };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!agreedToTerms) {
+      setError('پذیرش قوانین و مقررات و سیاست حفظ حریم خصوصی الزامی است.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('رمز عبور با تکرار آن مطابقت ندارد.');
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('رمز عبور باید حداقل ۸ کاراکتر باشد.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -102,7 +124,8 @@ export default function RegisterPage() {
         confirmPassword,
         country,
         role: selectedRole,
-        clientIp: '127.0.0.1', // Mock or real client IP
+        selectedIndustry: selectedRole === 'seller' ? selectedIndustry : undefined,
+        clientIp: '127.0.0.1',
       });
 
       if (!res.ok || !res.user || !res.verificationToken) {
@@ -119,7 +142,7 @@ export default function RegisterPage() {
       setBotChatHistory([
         {
           sender: 'bot',
-          text: `👋 به ربات رسمی بایوپی خوش آمدید!\nتوکن اعتبارسنجی (${res.verificationToken.slice(0, 8)}...) تایید گردید.\n\nلطفاً برای تایید هویت، اطلاعات زیر را ارسال کنید:\n• آیدی اینستاگرام (بدون @)\n• اسم و فامیل\n• شهر و کشور\n\n(بدون نیاز به ارسال هیچ‌گونه عکس یا مدارک شناسایی)`,
+          text: `👋 به ربات رسمی بایوپی (@${BIOPAY_CONFIG.TELEGRAM_BOT_USERNAME}) خوش آمدید!\n\n📧 ایمیل شما: ${res.user.email}\n🔒 جهت تغییر یا بازیابی رمز عبور، همیشه از طریق وب‌اپ اقدام فرمایید.\n\nلطفاً برای تایید هویت، اطلاعات زیر را ارسال کنید:\n• آیدی اینستاگرام (بدون @)\n• اسم و فامیل\n• شهر و کشور\n\n(بدون نیاز به ارسال هیچ‌گونه عکس یا مدارک شناسایی)`,
           time: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -218,7 +241,7 @@ export default function RegisterPage() {
     }
   };
 
-  const telegramLink = `https://t.me/BioPayBot?start=verify_${verificationToken}`;
+  const telegramLink = `https://t.me/${BIOPAY_CONFIG.TELEGRAM_BOT_USERNAME}?start=verify_${verificationToken}`;
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-slate-100">
@@ -231,7 +254,7 @@ export default function RegisterPage() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="w-full max-w-lg space-y-6"
+        className={`w-full ${step === 'industry' ? 'max-w-5xl' : 'max-w-lg'} space-y-6 transition-all`}
       >
         {/* Brand Header */}
         <div className="text-center space-y-2">
@@ -244,33 +267,37 @@ export default function RegisterPage() {
             </div>
             <span>{t('common.appName')} | BioPay</span>
           </a>
-          <h1 className="text-xl font-extrabold text-white">
-            {step === 'role'
-              ? t('auth.chooseRoleTitle')
-              : step === 'form'
-              ? selectedRole === 'seller'
-                ? t('auth.sellerRegisterTitle')
-                : t('auth.userRegisterTitle')
-              : t('auth.telegramVerifyTitle')}
-          </h1>
-          <p className="text-xs text-slate-400">
-            {step === 'role'
-              ? t('auth.chooseRoleSubtitle')
-              : step === 'form'
-              ? selectedRole === 'seller'
-                ? t('auth.sellerRegisterSubtitle')
-                : t('auth.userRegisterSubtitle')
-              : t('auth.telegramVerifySubtitle')}
-          </p>
+          {step !== 'industry' && (
+            <>
+              <h1 className="text-xl font-extrabold text-white">
+                {step === 'role'
+                  ? t('auth.chooseRoleTitle')
+                  : step === 'form'
+                  ? selectedRole === 'seller'
+                    ? t('auth.sellerRegisterTitle')
+                    : t('auth.userRegisterTitle')
+                  : t('auth.telegramVerifyTitle')}
+              </h1>
+              <p className="text-xs text-slate-400">
+                {step === 'role'
+                  ? t('auth.chooseRoleSubtitle')
+                  : step === 'form'
+                  ? selectedRole === 'seller'
+                    ? t('auth.sellerRegisterDesc')
+                    : t('auth.userRegisterDesc')
+                  : t('auth.telegramVerifyDesc')}
+              </p>
+            </>
+          )}
         </div>
 
         {/* STEP 1: ROLE SELECTION */}
         {step === 'role' && (
           <div className="space-y-4">
-            {/* Card 1: Seller */}
+            {/* Option 1: Seller */}
             <Card
               onClick={() => handleRoleSelect('seller')}
-              className="p-5 border-2 border-slate-800 hover:border-emerald-500 bg-slate-900/90 transition-all cursor-pointer rounded-2xl group hover:shadow-xl hover:shadow-emerald-950/40"
+              className="p-5 bg-slate-900/90 border-slate-800 hover:border-emerald-500/60 hover:bg-slate-900 transition-all cursor-pointer group rounded-2xl shadow-lg relative overflow-hidden"
             >
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:bg-emerald-500 group-hover:text-white transition">
@@ -282,7 +309,7 @@ export default function RegisterPage() {
                       {t('auth.roleSellerTitle')}
                     </h2>
                     <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">
-                      فروشگاهی
+                      ویترین و درگاه
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 leading-relaxed">
@@ -292,10 +319,10 @@ export default function RegisterPage() {
               </div>
             </Card>
 
-            {/* Card 2: Regular User / Referrer */}
+            {/* Option 2: Regular User / Referrer */}
             <Card
               onClick={() => handleRoleSelect('referrer')}
-              className="p-5 border-2 border-slate-800 hover:border-cyan-500 bg-slate-900/90 transition-all cursor-pointer rounded-2xl group hover:shadow-xl hover:shadow-cyan-950/40"
+              className="p-5 bg-slate-900/90 border-slate-800 hover:border-cyan-500/60 hover:bg-slate-900 transition-all cursor-pointer group rounded-2xl shadow-lg relative overflow-hidden"
             >
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:bg-cyan-500 group-hover:text-white transition">
@@ -307,7 +334,7 @@ export default function RegisterPage() {
                       {t('auth.roleUserTitle')}
                     </h2>
                     <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300">
-                      پورسانت نقدی
+                      پورسانت نقدی ۱۰٪ الی ۲۰٪
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 leading-relaxed">
@@ -329,20 +356,30 @@ export default function RegisterPage() {
           </div>
         )}
 
-        {/* STEP 2: REGISTRATION FORM (EMAIL + PASSWORD + COUNTRY) */}
+        {/* STEP 2: INDUSTRY SELECTION (FOR SELLERS) */}
+        {step === 'industry' && (
+          <IndustryPicker
+            selectedId={selectedIndustry}
+            onSelect={(id) => setSelectedIndustry(id)}
+            onProceed={() => setStep('form')}
+            onBack={() => setStep('role')}
+          />
+        )}
+
+        {/* STEP 3: REGISTRATION FORM (EMAIL + PASSWORD + CONFIRM + COUNTRY + TERMS) */}
         {step === 'form' && (
           <Card className="p-6 bg-slate-900/95 border-slate-800 rounded-2xl shadow-xl space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
                 {selectedRole === 'seller' ? <Store className="w-4 h-4" /> : <Gift className="w-4 h-4" />}
-                {selectedRole === 'seller' ? 'ثبت‌نام فروشنده' : 'ثبت‌نام معرف و کاربر عادی'}
+                {selectedRole === 'seller' ? 'ثبت‌نام فروشنده' : 'ثبت‌نام معرف و همکار فروش'}
               </span>
               <button
                 type="button"
-                onClick={() => setStep('role')}
+                onClick={() => setStep(selectedRole === 'seller' ? 'industry' : 'role')}
                 className="text-xs text-slate-400 hover:text-white transition cursor-pointer"
               >
-                تغییر نقش
+                ← بازگشت
               </button>
             </div>
 
@@ -366,7 +403,7 @@ export default function RegisterPage() {
                   placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-white dir-ltr text-start"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 dir-ltr text-start focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
@@ -383,7 +420,7 @@ export default function RegisterPage() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-white dir-ltr text-start"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 dir-ltr text-start focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
@@ -400,7 +437,7 @@ export default function RegisterPage() {
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-white dir-ltr text-start"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 dir-ltr text-start focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
@@ -413,7 +450,7 @@ export default function RegisterPage() {
                 <select
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-hidden focus:border-emerald-500"
+                  className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-xl text-xs text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                 >
                   {COUNTRIES.map((c) => (
                     <option key={c.code} value={locale === 'fa' ? c.nameFa : c.nameEn}>
@@ -423,12 +460,36 @@ export default function RegisterPage() {
                 </select>
               </div>
 
+              {/* Terms and Privacy Checkbox */}
+              <div className="pt-2">
+                <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-300 select-none">
+                  <input
+                    type="checkbox"
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-gray-400 bg-white"
+                    required
+                  />
+                  <span className="leading-relaxed">
+                    من تمام{' '}
+                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline font-bold">
+                      شرایط و مقررات استفاده
+                    </a>{' '}
+                    و{' '}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline font-bold">
+                      سیاست حفظ حریم خصوصی
+                    </a>{' '}
+                    بایوپی را مطالعه کرده و با آن موافقم.
+                  </span>
+                </label>
+              </div>
+
               <Button
                 type="submit"
                 disabled={loading}
                 className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-950/50"
               >
-                {loading ? 'در حال ثبت اطلاعات...' : 'ثبت‌نام و مرحله بعد'}
+                {loading ? 'در حال ثبت اطلاعات...' : 'ثبت‌نام و دریافت لینک تایید هویت'}
                 <ArrowRight className="w-4 h-4 rtl:rotate-180" />
               </Button>
             </form>
@@ -444,7 +505,7 @@ export default function RegisterPage() {
           </Card>
         )}
 
-        {/* STEP 3: TELEGRAM VERIFICATION REQUIRED */}
+        {/* STEP 4: TELEGRAM VERIFICATION REQUIRED */}
         {step === 'verification' && registeredUser && (
           <Card className="p-6 bg-slate-900/95 border-slate-800 rounded-2xl shadow-xl space-y-6">
             <div className="text-center space-y-3">
@@ -455,7 +516,7 @@ export default function RegisterPage() {
                 ثبت‌نام شما انجام شد.
               </h2>
               <p className="text-xs text-slate-300 leading-relaxed max-w-sm mx-auto">
-                برای تایید هویت و فعالسازی، روی دکمه بالا بزنید.
+                برای تایید هویت و فعال‌سازی، روی دکمه بالا بزنید.
               </p>
             </div>
 
@@ -473,7 +534,7 @@ export default function RegisterPage() {
               </a>
 
               <p className="text-[11px] text-center text-slate-400">
-                لینک ربات: <span className="dir-ltr text-sky-400 font-mono text-[10px]">t.me/BioPayBot?start=verify_{verificationToken.slice(0, 8)}...</span>
+                لینک ربات: <span className="dir-ltr text-sky-400 font-mono text-[10px]">t.me/{BIOPAY_CONFIG.TELEGRAM_BOT_USERNAME}?start=verify_{verificationToken.slice(0, 8)}...</span>
               </p>
             </div>
 
@@ -486,7 +547,7 @@ export default function RegisterPage() {
               >
                 <div className="flex items-center gap-2">
                   <Bot className="w-4 h-4 text-cyan-400" />
-                  <span>تست آنی اعتبارسنجی تلگرام در همین صفحه</span>
+                  <span>تست آنی اعتبارسنجی ربات تلگرام در همین صفحه</span>
                 </div>
                 <span className="text-[11px] text-cyan-400 underline">
                   {showBotSimulator ? 'بستن شبیه‌ساز' : 'باز کردن شبیه‌ساز'}
@@ -525,21 +586,21 @@ export default function RegisterPage() {
                           placeholder="آیدی اینستاگرام (مثال: tehran_boutique)"
                           value={instaInput}
                           onChange={(e) => setInstaInput(e.target.value)}
-                          className="bg-slate-900 border-slate-800 text-xs text-white"
+                          className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 text-xs"
                           required
                         />
                         <Input
                           placeholder="نام و نام خانوادگی (مثال: علی رضایی)"
                           value={nameInput}
                           onChange={(e) => setNameInput(e.target.value)}
-                          className="bg-slate-900 border-slate-800 text-xs text-white"
+                          className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 text-xs"
                           required
                         />
                         <Input
                           placeholder="شهر (مثال: تهران یا دبی)"
                           value={cityInput}
                           onChange={(e) => setCityInput(e.target.value)}
-                          className="bg-slate-900 border-slate-800 text-xs text-white"
+                          className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 text-xs"
                           required
                         />
                       </div>

@@ -35,6 +35,7 @@ export interface StoredUser {
   referralCode: string;
   referralLink: string;
   storeSlug?: string;
+  selectedIndustry?: string;
   selectedPlan?: 'starter' | 'pro' | 'business';
   hasPaidPlan?: boolean;
   rejectionReason?: string;
@@ -181,6 +182,7 @@ export async function registerNewUser(params: {
   country: string;
   role: UserRole;
   clientIp?: string;
+  selectedIndustry?: string;
 }): Promise<{ ok: boolean; user?: StoredUser; error?: string; verificationToken?: string }> {
   // 1. Zod Validation
   const validation = registrationSchema.safeParse(params);
@@ -224,6 +226,7 @@ export async function registerNewUser(params: {
     role: params.role,
     status: 'PENDING_VERIFICATION',
     country: params.country,
+    selectedIndustry: params.selectedIndustry || 'clothing',
     verificationToken,
     verificationTokenExpiry,
     referralCode,

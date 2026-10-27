@@ -46,7 +46,7 @@ interface ProductManagementViewProps {
   onUpdateProduct: (prod: ProductItem) => void;
   onDeleteProduct: (id: string) => void;
   onUpgradePlan: () => void;
-  plan: 'STARTER' | 'PRO';
+  plan: 'STARTER' | 'PRO' | 'BUSINESS';
   isPlanExpired?: boolean;
 }
 
@@ -70,6 +70,7 @@ export function ProductManagementView({
   const [isAddEditOpen, setIsAddEditOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
+  const [limitNotice, setLimitNotice] = useState<string | null>(null);
 
   // Form state
   const [formTitle, setFormTitle] = useState('');
@@ -81,9 +82,13 @@ export function ProductManagementView({
   const [formImages, setFormImages] = useState<string[]>([]);
   const [formError, setFormError] = useState('');
 
-  const maxImages = plan === 'PRO' ? 5 : 3;
-  const maxProducts = plan === 'PRO' ? Infinity : 15;
-  const isLimitReached = plan === 'STARTER' && products.length >= maxProducts;
+  // Issue 7 Plan Limits:
+  // Starter: 12 products, 3 images
+  // Pro: 24 products, 4 images
+  // Business: 40 products, 5 images
+  const maxImages = plan === 'BUSINESS' ? 5 : plan === 'PRO' ? 4 : 3;
+  const maxProducts = plan === 'BUSINESS' ? 40 : plan === 'PRO' ? 24 : 12;
+  const isLimitReached = products.length >= maxProducts;
 
   // Categories list
   const categoryOptions = [
@@ -109,9 +114,11 @@ export function ProductManagementView({
 
   const openAddModal = () => {
     if (isLimitReached) {
+      setLimitNotice('به محدودیت محصولات پلن خود رسیده‌اید.');
       onUpgradePlan();
       return;
     }
+    setLimitNotice(null);
     setEditingProduct(null);
     setFormTitle('');
     setFormDescription('');
@@ -244,6 +251,24 @@ export function ProductManagementView({
         </Button>
       </div>
 
+      {/* Exact Limit Reached Banner */}
+      {isLimitReached && (
+        <div className="p-4 rounded-2xl bg-amber-500/15 border-2 border-amber-500/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+            <div className="text-xs text-amber-200">
+              <span className="font-bold text-sm block text-amber-300">به محدودیت محصولات پلن خود رسیده‌اید.</span>
+              <span>
+                ظرفیت پلن {plan === 'BUSINESS' ? 'سازمانی (۴۰ محصول)' : plan === 'PRO' ? 'حرفه‌ای (۲۴ محصول)' : 'استارتر (۱۲ محصول)'} تکمیل شده است. جهت افزودن محصولات بیشتر، پلن خود را ارتقا دهید.
+              </span>
+            </div>
+          </div>
+          <Button variant="primary" size="sm" onClick={onUpgradePlan} className="shrink-0 bg-amber-600 hover:bg-amber-500 text-white">
+            ارتقا به پلن بالاتر
+          </Button>
+        </div>
+      )}
+
       {/* Plan limit banner / Expired banner */}
       {isPlanExpired ? (
         <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 flex items-center justify-between gap-4">
@@ -260,29 +285,20 @@ export function ProductManagementView({
             تمدید فوری اشتراک
           </Button>
         </div>
-      ) : plan === 'STARTER' ? (
-        <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Crown className="w-5 h-5 text-amber-600 shrink-0" />
-            <div className="text-xs text-amber-900 dark:text-amber-200">
-              <span className="font-bold">محدودیت پلن استارتر: </span>
-              <span>
-                شما از {products.length} از ۱۵ محصول مجاز استفاده کرده‌اید. برای ثبت محصولات نامحدود و ۵ تصویر برای هر محصول، به پلن پرو ارتقا دهید.
-              </span>
-            </div>
-          </div>
-          <Button variant="outline" size="sm" onClick={onUpgradePlan} className="shrink-0">
-            ارتقا به پلن Pro
-          </Button>
-        </div>
       ) : (
-        <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-300">
+        <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-slate-300">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span className="font-bold">پلن پرو فعال:</span>
-            <span>ظرفیت محصولات نامحدود و حداکثر ۵ تصویر WebP با کیفیت بالا فعال است.</span>
+            <Crown className="w-4 h-4 text-emerald-400" />
+            <span className="font-bold text-white">
+              پلن {plan === 'BUSINESS' ? 'سازمانی (Business)' : plan === 'PRO' ? 'حرفه‌ای (Pro)' : 'استارتر (Starter)'}:
+            </span>
+            <span>
+              استفاده‌شده: {products.length} از {maxProducts} محصول مجاز (حداکثر {maxImages} تصویر به ازای هر محصول)
+            </span>
           </div>
-          <Badge variant="success">نامحدود</Badge>
+          <Badge variant={isLimitReached ? 'warning' : 'success'}>
+            {products.length} / {maxProducts} محصول
+          </Badge>
         </div>
       )}
 

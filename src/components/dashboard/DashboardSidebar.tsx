@@ -12,11 +12,13 @@ import {
   LogOut,
   Store,
   X,
+  BarChart3,
 } from 'lucide-react';
 import { useI18n } from '../../lib/i18n';
 
 export type DashboardTab =
   | 'overview'
+  | 'analytics'
   | 'products'
   | 'categories'
   | 'orders'
@@ -50,6 +52,7 @@ export function DashboardSidebar({
 
   const menuItems = [
     { id: 'overview' as DashboardTab, label: t('dashboard.overview'), icon: LayoutDashboard },
+    { id: 'analytics' as DashboardTab, label: 'آمار و تحلیل بازدید', icon: BarChart3 },
     { id: 'products' as DashboardTab, label: t('dashboard.products'), icon: Package },
     { id: 'categories' as DashboardTab, label: t('dashboard.categories'), icon: Layers },
     { id: 'orders' as DashboardTab, label: t('dashboard.orders'), icon: ShoppingBag },

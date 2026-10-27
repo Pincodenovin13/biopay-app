@@ -118,12 +118,12 @@ export function LandingFooter({ onGoHome, onOpenAuth }: LandingFooterProps) {
             <h4 className="text-xs font-bold text-white uppercase tracking-wider">{t('footer.legalTitle')}</h4>
             <ul className="space-y-2 text-xs">
               <li>
-                <a href="#faq-section" className="hover:text-white transition-colors">
+                <a href="/terms" className="hover:text-white transition-colors">
                   {t('footer.termsOfService')}
                 </a>
               </li>
               <li>
-                <a href="#faq-section" className="hover:text-white transition-colors">
+                <a href="/privacy" className="hover:text-white transition-colors">
                   {t('footer.privacyPolicy')}
                 </a>
               </li>

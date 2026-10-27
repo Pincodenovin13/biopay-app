@@ -17,6 +17,7 @@ export interface BioPayPlanData {
   oldPriceUSDT: number;
   referralCommissionPercent: number;
   maxProducts: number;
+  maxImagesPerProduct: number;
   maxStores: number;
   transactionFeePercent: number;
   features: string[];
@@ -32,16 +33,18 @@ export const THREE_PLANS: BioPayPlanData[] = [
     priceUSDT: 27,                      // 27 USDT
     oldPriceUSDT: 45,                   // 45 USDT (strikethrough)
     referralCommissionPercent: 10.0,    // 10% = 500,000 Toman / 2.7 USDT
-    maxProducts: 50,
+    maxProducts: 12,                    // Issue 7 limit: 12 products
+    maxImagesPerProduct: 3,             // Issue 7 limit: 3 images per product
     maxStores: 1,
     transactionFeePercent: 2.0,
     features: [
       'مدت اشتراک: ۱ ماهه',
-      'تا ۵۰ محصول فعال در ویترین فروشگاه',
+      'حداکثر ۱۲ محصول فعال در ویترین فروشگاه',
+      'حداکثر ۳ تصویر به ازای هر محصول (فشرده‌سازی WebP)',
       'درگاه پرداخت شاپرک شتابی و کریپتو TRC20',
       'کارمزد ۲٪ روی سفارش‌های ثبت شده',
       'پورسانت همکاری در فروش ۱۰٪ ویژه معرفین',
-      'سفارشی‌سازی ظاهر و تم فروشگاه اینستاگرامی',
+      'سفارشی‌سازی تم و قالب فروشگاه اینستاگرامی',
     ],
   },
   {
@@ -53,12 +56,14 @@ export const THREE_PLANS: BioPayPlanData[] = [
     priceUSDT: 52,                      // 52 USDT
     oldPriceUSDT: 80,                   // 80 USDT (strikethrough)
     referralCommissionPercent: 15.0,    // 15% = 1,350,000 Toman / 7.8 USDT
-    maxProducts: 250,
+    maxProducts: 24,                    // Issue 7 limit: 24 products
+    maxImagesPerProduct: 4,             // Issue 7 limit: 4 images per product
     maxStores: 2,
     transactionFeePercent: 1.5,
     features: [
       'مدت اشتراک: ۲ ماهه (پرفروش‌ترین)',
-      'تا ۲۵۰ محصول فعال با دسته‌بندی نامحدود',
+      'حداکثر ۲۴ محصول فعال با دسته‌بندی دلخواه',
+      'حداکثر ۴ تصویر به ازای هر محصول',
       'درگاه پرداخت مستقیم با تسویه ۲۴ ساعته',
       'کارمزد ۱.۵٪ روی تراکنش‌های مشتریان',
       'پورسانت همکاری در فروش ۱۵٪ برای معرف',
@@ -75,12 +80,14 @@ export const THREE_PLANS: BioPayPlanData[] = [
     priceUSDT: 75,                      // 75 USDT
     oldPriceUSDT: 110,                  // 110 USDT (strikethrough)
     referralCommissionPercent: 20.0,    // 20% = 2,400,000 Toman / 15 USDT
-    maxProducts: 1000,
+    maxProducts: 40,                    // Issue 7 limit: 40 products
+    maxImagesPerProduct: 5,             // Issue 7 limit: 5 images per product
     maxStores: 5,
     transactionFeePercent: 1.0,
     features: [
       'مدت اشتراک: ۳ ماهه (بیشترین صرفه اقتصادی)',
-      'محصولات نامحدود (تا ۱۰۰۰ عدد)',
+      'حداکثر ۴۰ محصول فعال در ویترین فروشگاه',
+      'حداکثر ۵ تصویر به ازای هر محصول',
       'تا ۵ فروشگاه مجزا روی یک حساب کاربری',
       'کمترین کارمزد تراکنش: فقط ۱.۰٪',
       'بالاترین پورسانت ارجاع: ۲۰٪ نقدی به ازای هر خرید',
@@ -91,7 +98,7 @@ export const THREE_PLANS: BioPayPlanData[] = [
   },
 ];
 
-export const TWELVE_INDUSTRIES = [
+export const FIFTEEN_INDUSTRIES = [
   { name: 'پوشاک و مد', slug: 'clothing', icon: 'shirt', order: 1 },
   { name: 'کیف و کفش', slug: 'shoes', icon: 'shopping-bag', order: 2 },
   { name: 'قنادی و شیرینی‌جات', slug: 'bakery', icon: 'cake', order: 3 },
@@ -104,10 +111,13 @@ export const TWELVE_INDUSTRIES = [
   { name: 'مربی و تناسب اندام', slug: 'fitness-coach', icon: 'dumbbell', order: 10 },
   { name: 'محصولات دیجیتال و فایل', slug: 'digital-products', icon: 'file-text', order: 11 },
   { name: 'دوره‌های آموزشی و وبینار', slug: 'courses', icon: 'graduation-cap', order: 12 },
+  { name: 'طلا و جواهرات لوکس', slug: 'jewelry', icon: 'crown', order: 13 },
+  { name: 'لوازم آرایشی و مراقبت پوستی', slug: 'cosmetics', icon: 'heart', order: 14 },
+  { name: 'دکوراسیون و اکسسوری منزل', slug: 'home-decor', icon: 'home', order: 15 },
 ];
 
 export async function main() {
-  console.log('Seeding BioPay: Exactly 3 Plans & 12 Industries...');
+  console.log('Seeding BioPay: Exactly 3 Plans & 15 Industries...');
 
   try {
     // 1. Seed 3 Plans
@@ -155,8 +165,8 @@ export async function main() {
       console.log(`Plan seeded: ${plan.slug} (${plan.name}) - ${plan.durationMonths}mo`);
     }
 
-    // 2. Seed 12 Industries
-    for (const ind of TWELVE_INDUSTRIES) {
+    // 2. Seed 15 Industries
+    for (const ind of FIFTEEN_INDUSTRIES) {
       await prisma.industry.upsert({
         where: { slug: ind.slug },
         update: {

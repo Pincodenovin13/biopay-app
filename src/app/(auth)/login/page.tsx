@@ -186,7 +186,7 @@ export default function LoginPage() {
 
               <div className="flex flex-col sm:flex-row gap-2 pt-1">
                 <a
-                  href={`https://t.me/BioPayBot?start=verify_${statusBanner.token || 'demo'}`}
+                  href={`https://t.me/BioPay_App_Bot?start=verify_${statusBanner.token || 'demo'}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 py-2 px-3 bg-sky-500 hover:bg-sky-400 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition"
@@ -251,7 +251,7 @@ export default function LoginPage() {
                 placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="bg-slate-950 border-slate-800 text-white dir-ltr text-start"
+                className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 dir-ltr text-start focus:ring-2 focus:ring-emerald-500"
               />
             </div>
 
@@ -275,7 +275,7 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="bg-slate-950 border-slate-800 text-white dir-ltr text-start"
+                className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 dir-ltr text-start focus:ring-2 focus:ring-emerald-500"
               />
             </div>
 

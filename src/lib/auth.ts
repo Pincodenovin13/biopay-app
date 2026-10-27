@@ -19,16 +19,18 @@ export interface AuthSession {
   expiresAt: number;
 }
 
+import { redisGet, redisSet, redisDel } from './redis';
+
 export interface OtpRecord {
   identifier: string; // phone or email
-  code: string;
   codeHash: string;
   expiresAt: number;
   attempts: number;
 }
 
-// In-memory OTP storage for rapid local & server verification
-const otpStore = new Map<string, OtpRecord>();
+// In-memory fallback if Redis unavailable
+const localOtpStore = new Map<string, OtpRecord>();
+const localLockoutStore = new Map<string, number>();
 
 /**
  * Hash a plain string using SHA-256 (supports Node.js and Browser environments)
@@ -51,74 +53,143 @@ export async function hashString(value: string): Promise<string> {
 }
 
 /**
- * Generate a 6-digit numeric OTP code
+ * Generate a cryptographically secure 6-digit numeric OTP code
  */
 export async function generateOtp(identifier: string): Promise<{ code: string; expiresAt: number }> {
-  // Fixed demo code for test review, or dynamic 6 digits
-  const code = identifier === '09123456789' || identifier.includes('test')
-    ? '123456'
-    : Math.floor(100000 + Math.random() * 900000).toString();
+  // Check if account is locked out (15 minutes)
+  const isLocked = await isAccountLocked(identifier);
+  if (isLocked) {
+    throw new Error('حساب شما به دلیل تلاش‌های ناموفق مکرر به مدت ۱۵ دقیقه مسدود شده است.');
+  }
+
+  // Cryptographically secure random 6 digits
+  let code: string;
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const uint32 = new Uint32Array(1);
+    crypto.getRandomValues(uint32);
+    code = (100000 + (uint32[0] % 900000)).toString();
+  } else {
+    code = Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  // ONLY for local dev debugging, log to console if explicitly enabled
+  if (process.env.NODE_ENV === 'development' && process.env.BIOPAY_DEV_BYPASS === 'true') {
+    console.log(`[BioPay Auth Dev] Generated OTP for ${identifier}: ${code}`);
+  }
 
   const codeHash = await hashString(code);
   const expiresAt = Date.now() + 3 * 60 * 1000; // 3 minutes validity
 
-  otpStore.set(identifier, {
+  const record: OtpRecord = {
     identifier,
-    code,
     codeHash,
     expiresAt,
     attempts: 0,
-  });
+  };
+
+  // Persist to Redis with 180s TTL (or memory fallback)
+  const redisKey = `biopay:otp:${identifier}`;
+  await redisSet(redisKey, JSON.stringify(record), 180);
+  localOtpStore.set(identifier, record);
 
   return { code, expiresAt };
 }
 
 /**
+ * Check if identifier is locked out (15 min after 5 failed tries)
+ */
+export async function isAccountLocked(identifier: string): Promise<boolean> {
+  const lockoutKey = `biopay:lockout:${identifier}`;
+  const locked = await redisGet(lockoutKey);
+  if (locked) return true;
+
+  const localLock = localLockoutStore.get(identifier);
+  if (localLock && Date.now() < localLock) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Lock account for 15 minutes (900 seconds)
+ */
+export async function lockAccount(identifier: string): Promise<void> {
+  const lockoutKey = `biopay:lockout:${identifier}`;
+  await redisSet(lockoutKey, 'locked', 900);
+  localLockoutStore.set(identifier, Date.now() + 15 * 60 * 1000);
+}
+
+/**
  * Verify an entered OTP code against the stored hash
+ * (STRICT: Zero 123456 backdoors)
  */
 export async function verifyOtp(
   identifier: string,
   enteredCode: string
 ): Promise<{ success: boolean; error?: string; session?: AuthSession }> {
-  const record = otpStore.get(identifier);
+  // 1. Check lockout
+  if (await isAccountLocked(identifier)) {
+    return {
+      success: false,
+      error: 'حساب شما به دلیل ۵ بار تلاش ناموفق به مدت ۱۵ دقیقه مسدود شده است.',
+    };
+  }
 
-  // If no record found, check fallback test bypass
-  if (!record) {
-    if (enteredCode === '123456') {
-      const mockSession = createSession({
-        userId: 'usr_sample_' + identifier.replace(/\D/g, '').slice(-4),
-        phone: identifier,
-        role: identifier.includes('admin') ? 'ADMIN' : 'USER',
-        storeSlug: 'tehran-boutique',
-      });
-      return { success: true, session: mockSession };
+  // 2. Fetch record from Redis / memory
+  const redisKey = `biopay:otp:${identifier}`;
+  const rawRecord = await redisGet(redisKey);
+  let record: OtpRecord | null = null;
+
+  if (rawRecord) {
+    try {
+      record = JSON.parse(rawRecord) as OtpRecord;
+    } catch {
+      record = null;
     }
+  }
+  if (!record) {
+    record = localOtpStore.get(identifier) || null;
+  }
+
+  if (!record) {
     return { success: false, error: 'کد تایید منقضی شده یا درخواستی ثبت نشده است.' };
   }
 
-  // Check expiration
+  // 3. Check expiration (3 minutes)
   if (Date.now() > record.expiresAt) {
-    otpStore.delete(identifier);
+    await redisDel(redisKey);
+    localOtpStore.delete(identifier);
     return { success: false, error: 'کد تایید منقضی شده است. لطفاً مجدداً تلاش نمایید.' };
   }
 
-  // Rate limiting attempts (max 5 tries per code)
+  // 4. Rate limiting: lock after 5 failed attempts for 15 minutes
   record.attempts += 1;
-  if (record.attempts > 5) {
-    otpStore.delete(identifier);
-    return { success: false, error: 'تعداد دفعات تلاش بیش از حد مجاز بود.' };
+  if (record.attempts >= 5) {
+    await redisDel(redisKey);
+    localOtpStore.delete(identifier);
+    await lockAccount(identifier);
+    return {
+      success: false,
+      error: 'تعداد دفعات تلاش بیش از حد مجاز بود (۵ بار). حساب شما به مدت ۱۵ دقیقه مسدود شد.',
+    };
   }
 
-  // Compare hash
+  // 5. Compare cryptographic SHA-256 hash
   const enteredHash = await hashString(enteredCode);
-  const isValid = enteredHash === record.codeHash || enteredCode === '123456';
+  const isValid = enteredHash === record.codeHash;
 
   if (!isValid) {
-    return { success: false, error: 'کد وارد شده صحیح نمی‌باشد.' };
+    // Update attempts in storage
+    const remainingTtl = Math.max(1, Math.round((record.expiresAt - Date.now()) / 1000));
+    await redisSet(redisKey, JSON.stringify(record), remainingTtl);
+    localOtpStore.set(identifier, record);
+    return { success: false, error: `کد وارد شده صحیح نمی‌باشد. (${5 - record.attempts} تلاش باقی‌مانده)` };
   }
 
-  // Verified - clear code and issue session
-  otpStore.delete(identifier);
+  // 6. Successfully Verified - delete code and issue session
+  await redisDel(redisKey);
+  localOtpStore.delete(identifier);
+
   const role = identifier.includes('admin') ? 'ADMIN' : 'USER';
   const session = createSession({
     userId: 'usr_' + identifier.replace(/\D/g, '').slice(-6),
